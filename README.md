@@ -19,8 +19,8 @@ So you can go check whether the answer is actually true.
 ## Where it's at
 
 Early. Right now there's a FastAPI backend with a `/health` endpoint and a React
-page that calls it — step 1 of the 25 planned in `docs/`. Nothing indexes
-anything yet.
+page that calls it — step 1 of 25 planned steps. Nothing indexes anything
+yet.
 
 ## Running it
 
@@ -49,5 +49,3 @@ page just shows a connection error.
 
 Python + FastAPI, React + TypeScript on Vite. Qdrant, Tree-sitter and Docker are
 in the plan but not in yet.
-
-Design doc and the full step-by-step plan are in `docs/`.
