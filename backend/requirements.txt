@@ -1,0 +1,5 @@
+# Dogrudan bagimliliklar - tam surume sabitlendi.
+# Diger paketler (pydantic, starlette, anyio, h11 ...) bunlarin
+# bagimliligi olarak otomatik kurulur, ayrica yazmaya gerek yok.
+fastapi==0.141.1
+uvicorn==0.53.0
