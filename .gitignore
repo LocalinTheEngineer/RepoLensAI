@@ -11,6 +11,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
+# Klonlanan repository'ler buraya iner - commit edilmez
+backend/workspace/
+
 # ---------------------------------------------------------------
 # Node / frontend
 # ---------------------------------------------------------------
