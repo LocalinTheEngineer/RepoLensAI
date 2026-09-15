@@ -1,83 +1,161 @@
 /* index.css'teki #root kurallarini bu sayfa icin sadelestiriyoruz. */
 #root {
   width: 100%;
-  max-width: 640px;
+  max-width: 720px;
   border-inline: none;
-  padding: 0 16px;
-  justify-content: center;
+  padding: 48px 16px;
+  justify-content: flex-start;
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .app-header h1 {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .subtitle {
-  color: var(--text);
   font-size: 16px;
 }
 
-/* Durum kutusu. Kenarlik rengi duruma gore degisir. */
-.status-card {
+/* ---------- Backend saglik rozeti ---------- */
+
+.health {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 32px 24px;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--code-bg);
-  box-shadow: var(--shadow);
+  border-radius: 999px;
+  font-size: 15px;
+  align-self: center;
 }
 
-.status-card--ok {
+.health--ok {
   border-color: var(--accent-border);
   background: var(--accent-bg);
+  color: var(--text-h);
 }
 
-.status-card--error {
+.health--error {
   border-color: rgba(220, 38, 38, 0.5);
   background: rgba(220, 38, 38, 0.08);
 }
 
-.status-line {
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-.status-detail {
-  font-size: 16px;
-}
-
-.status-hint {
+.link-button {
+  font: inherit;
   font-size: 15px;
-  line-height: 180%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
-.retry-button {
-  margin-top: 8px;
-  padding: 8px 20px;
+/* ---------- Repository formu ---------- */
+
+.repo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.repo-label {
+  font-size: 15px;
+}
+
+.repo-row {
+  display: flex;
+  gap: 8px;
+}
+
+.repo-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
   font: inherit;
   font-size: 16px;
   color: var(--text-h);
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.repo-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.repo-button {
+  padding: 10px 22px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--bg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.retry-button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+.repo-button:hover:not(:disabled) {
+  filter: brightness(1.1);
 }
 
-.retry-button:disabled {
+.repo-input:disabled,
+.repo-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ---------- Sonuc kutusu ---------- */
+
+.result {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--code-bg);
+  text-align: left;
+}
+
+.result h2 {
+  margin: 0 0 8px;
+}
+
+.result--ok {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.result--error {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.result-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 16px 0 0;
+  font-size: 15px;
+}
+
+.result-details dt {
+  color: var(--text);
+}
+
+.result-details dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.result-details code {
+  overflow-wrap: anywhere;
 }
