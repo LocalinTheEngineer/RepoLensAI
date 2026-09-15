@@ -172,3 +172,23 @@ def _make_writable_and_retry(func, path, _error) -> None:
     """Windows'ta .git icindeki salt-okunur dosyalari silebilmek icin."""
     os.chmod(path, stat.S_IWRITE)
     func(path)
+
+
+def build_reference(owner: str, name: str) -> RepositoryRef:
+    """URL yerine ayri ayri gelen owner/name parcalarini dogrular.
+
+    Adres cubugundan (path parametresi) gelen degerler de ayni regex'ten
+    gectigi icin ".." veya "/" gibi tehlikeli girdiler burada da engellenir.
+    """
+    return parse_github_url(f"github.com/{owner}/{name}")
+
+
+def repository_path(ref: RepositoryRef) -> Path:
+    """Indirilmis repository'nin klasor yolunu dondurur; yoksa hata firlatir."""
+    target = WORKSPACE_DIR / ref.owner / ref.name
+    if not target.is_dir():
+        raise RepositoryError(
+            "Bu repository henuz indirilmemis. Once adresini girip indir.",
+            status_code=404,
+        )
+    return target

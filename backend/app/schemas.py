@@ -23,3 +23,27 @@ class CloneResponse(BaseModel):
     path: str
     commit: str
     already_cloned: bool
+
+
+class RepositoryFile(BaseModel):
+    """Islenmeye uygun bulunan tek bir kaynak dosyasi."""
+
+    path: str
+    extension: str
+    size_bytes: int
+    lines: int
+
+
+class FileScanResponse(BaseModel):
+    """GET /repositories/{owner}/{name}/files cevabi."""
+
+    owner: str
+    name: str
+    total_tracked: int
+    selected_count: int
+    skipped_count: int
+    skipped_reasons: dict[str, int]
+    by_extension: dict[str, int]
+    total_lines: int
+    files: list[RepositoryFile]
+    truncated: bool
