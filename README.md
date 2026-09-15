@@ -18,8 +18,9 @@ So you can go check whether the answer is actually true.
 
 ## Where it's at
 
-Early. You can paste a public GitHub URL and the backend clones it into a local
-workspace — step 2 of 25. Nothing gets indexed or answered yet.
+Early. You can paste a public GitHub URL, the backend clones it and works out
+which files are worth processing — step 3 of 25. Nothing gets indexed or
+answered yet.
 
 ## Running it
 
