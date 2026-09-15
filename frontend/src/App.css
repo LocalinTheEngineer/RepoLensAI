@@ -1,0 +1,83 @@
+/* index.css'teki #root kurallarini bu sayfa icin sadelestiriyoruz. */
+#root {
+  width: 100%;
+  max-width: 640px;
+  border-inline: none;
+  padding: 0 16px;
+  justify-content: center;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.app-header h1 {
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: var(--text);
+  font-size: 16px;
+}
+
+/* Durum kutusu. Kenarlik rengi duruma gore degisir. */
+.status-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--code-bg);
+  box-shadow: var(--shadow);
+}
+
+.status-card--ok {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.status-card--error {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.status-line {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.status-detail {
+  font-size: 16px;
+}
+
+.status-hint {
+  font-size: 15px;
+  line-height: 180%;
+}
+
+.retry-button {
+  margin-top: 8px;
+  padding: 8px 20px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.retry-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.retry-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
