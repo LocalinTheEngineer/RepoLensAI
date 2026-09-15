@@ -18,9 +18,8 @@ So you can go check whether the answer is actually true.
 
 ## Where it's at
 
-Early. Right now there's a FastAPI backend with a `/health` endpoint and a React
-page that calls it — step 1 of 25 planned steps. Nothing indexes anything
-yet.
+Early. You can paste a public GitHub URL and the backend clones it into a local
+workspace — step 2 of 25. Nothing gets indexed or answered yet.
 
 ## Running it
 
