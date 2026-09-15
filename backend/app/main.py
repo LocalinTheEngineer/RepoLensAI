@@ -1,18 +1,26 @@
 """RepoLens AI - Backend giris noktasi.
 
-Su an sadece bir saglik kontrolu (health check) endpoint'i var.
-Yol haritasi Adim 1: frontend ile backend'in konusabildigini kanitlamak.
+Yol haritasi:
+  Adim 1: /health         -> frontend ile backend konusabiliyor
+  Adim 2: /repositories   -> verilen GitHub URL'sindeki repo clone ediliyor
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.schemas import CloneRequest, CloneResponse
+from app.services.repository import (
+    RepositoryError,
+    clone_repository,
+    parse_github_url,
+)
 
 # Uygulama nesnesi. title/description/version degerleri
 # otomatik olusan API dokumantasyonunda (/docs) gorunur.
 app = FastAPI(
     title="RepoLens AI API",
     description="GitHub repository'lerini analiz eden AI developer tool'un backend servisi.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 # Tarayicidaki frontend'in bu API'ye istek atmasina izin verilen adresler.
@@ -35,3 +43,27 @@ app.add_middleware(
 def health() -> dict[str, str]:
     """Servisin ayakta olup olmadigini bildirir."""
     return {"status": "ok"}
+
+
+# Not: bilerek "async def" degil "def" kullaniyoruz. git clone islemi
+# uzun surer ve beklerken CPU'yu birakmaz; FastAPI normal "def"
+# fonksiyonlarini ayri bir thread'de calistirdigi icin sunucu bu sirada
+# diger isteklere cevap vermeye devam eder.
+@app.post("/repositories", response_model=CloneResponse)
+def create_repository(payload: CloneRequest) -> CloneResponse:
+    """Verilen public GitHub adresindeki repository'yi yerel workspace'e indirir."""
+    try:
+        ref = parse_github_url(payload.url)
+        path, commit, already_cloned = clone_repository(ref)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    return CloneResponse(
+        owner=ref.owner,
+        name=ref.name,
+        path=str(path),
+        commit=commit,
+        already_cloned=already_cloned,
+    )
