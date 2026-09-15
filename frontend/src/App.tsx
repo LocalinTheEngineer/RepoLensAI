@@ -37,6 +37,28 @@ type FileScan = {
   truncated: boolean
 }
 
+type ChunkSummary = {
+  chunk_id: string
+  file_path: string
+  start_line: number
+  end_line: number
+  line_count: number
+  preview: string
+}
+
+type ChunkScan = {
+  owner: string
+  name: string
+  file_count: number
+  chunk_count: number
+  total_lines: number
+  average_lines_per_chunk: number
+  chunk_size_lines: number
+  chunk_overlap_lines: number
+  chunks: ChunkSummary[]
+  truncated: boolean
+}
+
 type Clone =
   | { kind: 'idle' }
   | { kind: 'loading' }
@@ -47,6 +69,12 @@ type Scan =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'ok'; data: FileScan }
+  | { kind: 'error'; message: string }
+
+type Chunks =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'ok'; data: ChunkScan }
   | { kind: 'error'; message: string }
 
 // Backend'den gelen eleme sebeplerinin ekranda gosterilecek karsiliklari.
@@ -84,6 +112,16 @@ function describeError(error: unknown): string {
   return 'Bilinmeyen bir hata olustu.'
 }
 
+/** Verilen adresten JSON okur; hata durumunda anlasilir mesajla firlatir. */
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, init)
+  const body: unknown = await response.json()
+  if (!response.ok) {
+    throw new Error(readErrorMessage(body, response.status))
+  }
+  return body as T
+}
+
 function App() {
   const [health, setHealth] = useState<Health>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
@@ -91,6 +129,7 @@ function App() {
   const [url, setUrl] = useState('')
   const [clone, setClone] = useState<Clone>({ kind: 'idle' })
   const [scan, setScan] = useState<Scan>({ kind: 'idle' })
+  const [chunks, setChunks] = useState<Chunks>({ kind: 'idle' })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -115,58 +154,58 @@ function App() {
     return () => controller.abort()
   }, [attempt])
 
-  /** Indirilen repository'nin islenecek dosyalarini getirir. */
-  async function loadFiles(owner: string, name: string) {
-    setScan({ kind: 'loading' })
-    try {
-      const response = await fetch(
-        `${API_URL}/repositories/${owner}/${name}/files`,
-      )
-      const body: unknown = await response.json()
-      if (!response.ok) {
-        throw new Error(readErrorMessage(body, response.status))
-      }
-      setScan({ kind: 'ok', data: body as FileScan })
-    } catch (error) {
-      setScan({ kind: 'error', message: describeError(error) })
-    }
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     // Tarayicinin varsayilan davranisi sayfayi yeniden yuklemek; bunu istemiyoruz.
     event.preventDefault()
     setClone({ kind: 'loading' })
     setScan({ kind: 'idle' })
+    setChunks({ kind: 'idle' })
 
+    let repository: Repository
     try {
-      const response = await fetch(`${API_URL}/repositories`, {
+      repository = await fetchJson<Repository>('/repositories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
-
-      const body: unknown = await response.json()
-      if (!response.ok) {
-        throw new Error(readErrorMessage(body, response.status))
-      }
-
-      const repository = body as Repository
       setClone({ kind: 'ok', repository })
-
-      // Indirme bitti; hemen ardindan dosyalari tara.
-      await loadFiles(repository.owner, repository.name)
     } catch (error) {
       setClone({ kind: 'error', message: describeError(error) })
+      return
+    }
+
+    const base = `/repositories/${repository.owner}/${repository.name}`
+
+    // Once hangi dosyalarin islenecegini, sonra onlarin parcalarini getiriyoruz.
+    setScan({ kind: 'loading' })
+    try {
+      setScan({ kind: 'ok', data: await fetchJson<FileScan>(`${base}/files`) })
+    } catch (error) {
+      setScan({ kind: 'error', message: describeError(error) })
+      return
+    }
+
+    setChunks({ kind: 'loading' })
+    try {
+      setChunks({
+        kind: 'ok',
+        data: await fetchJson<ChunkScan>(`${base}/chunks`),
+      })
+    } catch (error) {
+      setChunks({ kind: 'error', message: describeError(error) })
     }
   }
 
-  const busy = clone.kind === 'loading' || scan.kind === 'loading'
+  const busy =
+    clone.kind === 'loading' ||
+    scan.kind === 'loading' ||
+    chunks.kind === 'loading'
 
   return (
     <main className="app">
       <header className="app-header">
         <h1>RepoLens AI</h1>
-        <p className="subtitle">Adim 3 &mdash; Kaynak dosyalari filtrele</p>
+        <p className="subtitle">Adim 4 &mdash; Kodu parcalara ayir</p>
       </header>
 
       <div className={`health health--${health.kind}`}>
@@ -309,19 +348,67 @@ function App() {
           )}
 
           {scan.data.files.length > 0 && (
-            <div className="file-list">
-              {scan.data.files.map((file) => (
-                <div key={file.path} className="file-row">
-                  <code className="file-path">{file.path}</code>
-                  <span className="file-lines">{file.lines} satir</span>
-                </div>
-              ))}
-            </div>
+            <details className="skipped">
+              <summary>Dosya listesini goster</summary>
+              <div className="file-list">
+                {scan.data.files.map((file) => (
+                  <div key={file.path} className="file-row">
+                    <code className="file-path">{file.path}</code>
+                    <span className="file-lines">{file.lines} satir</span>
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
+        </section>
+      )}
 
-          {scan.data.truncated && (
+      {chunks.kind === 'loading' && (
+        <section className="result">
+          <p>Kod parcalara ayriliyor&hellip;</p>
+        </section>
+      )}
+
+      {chunks.kind === 'error' && (
+        <section className="result result--error">
+          <h2>Parcalama basarisiz</h2>
+          <p>{chunks.message}</p>
+        </section>
+      )}
+
+      {chunks.kind === 'ok' && (
+        <section className="result scan">
+          <h2>Kod parcalari</h2>
+          <p>
+            <strong>{chunks.data.file_count}</strong> dosyadan{' '}
+            <strong>{chunks.data.chunk_count}</strong> parca uretildi &mdash;
+            parca basina ortalama{' '}
+            <strong>{chunks.data.average_lines_per_chunk}</strong> satir.
+          </p>
+          <p className="note">
+            Her parca en fazla {chunks.data.chunk_size_lines} satir; ardisik
+            parcalar {chunks.data.chunk_overlap_lines} satir ortusur, boylece
+            sinira denk gelen bir fonksiyon ikiye bolunup baglamini kaybetmez.
+          </p>
+
+          <div className="chunk-list">
+            {chunks.data.chunks.map((chunk) => (
+              <article key={chunk.chunk_id} className="chunk">
+                <header className="chunk-header">
+                  <code className="file-path">{chunk.file_path}</code>
+                  <span className="file-lines">
+                    {chunk.start_line}&ndash;{chunk.end_line} ({chunk.line_count}{' '}
+                    satir)
+                  </span>
+                </header>
+                <pre className="chunk-preview">{chunk.preview}</pre>
+              </article>
+            ))}
+          </div>
+
+          {chunks.data.truncated && (
             <p className="note">
-              Liste ilk {scan.data.files.length} dosyayla sinirlandi.
+              Onizleme ilk {chunks.data.chunks.length} parcayla sinirlandi.
             </p>
           )}
         </section>
