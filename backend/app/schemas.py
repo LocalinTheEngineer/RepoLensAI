@@ -47,3 +47,29 @@ class FileScanResponse(BaseModel):
     total_lines: int
     files: list[RepositoryFile]
     truncated: bool
+
+
+class ChunkSummary(BaseModel):
+    """Tek bir kod parcasinin ozeti (icerik yerine onizleme tasir)."""
+
+    chunk_id: str
+    file_path: str
+    start_line: int
+    end_line: int
+    line_count: int
+    preview: str
+
+
+class ChunkResponse(BaseModel):
+    """GET /repositories/{owner}/{name}/chunks cevabi."""
+
+    owner: str
+    name: str
+    file_count: int
+    chunk_count: int
+    total_lines: int
+    average_lines_per_chunk: float
+    chunk_size_lines: int
+    chunk_overlap_lines: int
+    chunks: list[ChunkSummary]
+    truncated: bool

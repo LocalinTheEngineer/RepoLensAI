@@ -4,16 +4,25 @@ Yol haritasi:
   Adim 1: /health         -> frontend ile backend konusabiliyor
   Adim 2: /repositories   -> verilen GitHub URL'sindeki repo clone ediliyor
   Adim 3: .../files       -> repodan yalnizca islenecek kaynak dosyalar
+  Adim 4: .../chunks      -> dosyalar satir araligi bilgisiyle parcalara ayrilir
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
+    ChunkResponse,
+    ChunkSummary,
     CloneRequest,
     CloneResponse,
     FileScanResponse,
     RepositoryFile,
+)
+from app.services.chunker import (
+    CHUNK_OVERLAP_LINES,
+    CHUNK_SIZE_LINES,
+    MAX_CHUNKS_IN_RESPONSE,
+    chunk_repository,
 )
 from app.services.file_scanner import (
     MAX_FILES_IN_RESPONSE,
@@ -33,7 +42,7 @@ from app.services.repository import (
 app = FastAPI(
     title="RepoLens AI API",
     description="GitHub repository'lerini analiz eden AI developer tool'un backend servisi.",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 # Tarayicidaki frontend'in bu API'ye istek atmasina izin verilen adresler.
@@ -119,4 +128,49 @@ def list_repository_files(owner: str, name: str) -> FileScanResponse:
             for item in shown
         ],
         truncated=len(result.selected) > len(shown),
+    )
+
+
+@app.get(
+    "/repositories/{owner}/{name}/chunks",
+    response_model=ChunkResponse,
+)
+def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
+    """Repository'nin kaynak dosyalarini satir araligi bilgisiyle parcalara ayirir."""
+    try:
+        ref = build_reference(owner, name)
+        path = repository_path(ref)
+        result = chunk_repository(path)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    total_lines = sum(chunk.line_count for chunk in result.chunks)
+    chunk_count = len(result.chunks)
+    shown = result.chunks[:MAX_CHUNKS_IN_RESPONSE]
+
+    return ChunkResponse(
+        owner=ref.owner,
+        name=ref.name,
+        file_count=result.file_count,
+        chunk_count=chunk_count,
+        total_lines=total_lines,
+        average_lines_per_chunk=(
+            round(total_lines / chunk_count, 1) if chunk_count else 0.0
+        ),
+        chunk_size_lines=CHUNK_SIZE_LINES,
+        chunk_overlap_lines=CHUNK_OVERLAP_LINES,
+        chunks=[
+            ChunkSummary(
+                chunk_id=chunk.chunk_id,
+                file_path=chunk.file_path,
+                start_line=chunk.start_line,
+                end_line=chunk.end_line,
+                line_count=chunk.line_count,
+                preview=chunk.preview,
+            )
+            for chunk in shown
+        ],
+        truncated=chunk_count > len(shown),
     )
