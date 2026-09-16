@@ -792,3 +792,32 @@
   background: var(--accent-bg);
   border-radius: 4px;
 }
+
+/* ---------- Arama modu secici ---------- */
+
+.mode-row {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+
+.mode-button {
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.mode-button:hover {
+  color: var(--text-h);
+}
+
+.mode-button--active {
+  color: var(--text-h);
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}

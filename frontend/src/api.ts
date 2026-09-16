@@ -86,10 +86,14 @@ export type SearchHit = {
   symbol_type: string | null
 }
 
+/** Arama modu: anlamsal (embedding) veya kelime tabanli (BM25). */
+export type SearchMode = 'semantic' | 'keyword'
+
 export type SearchResult = {
   owner: string
   name: string
   query: string
+  mode: SearchMode
   duration_ms: number
   hits: SearchHit[]
 }

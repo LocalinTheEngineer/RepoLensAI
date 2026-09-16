@@ -12,6 +12,7 @@ import {
   type Health,
   type IndexResult,
   type Repository,
+  type SearchMode,
   type SearchResult,
 } from './api'
 import type { ChatTurn } from './components/ChatMessage'
@@ -40,6 +41,7 @@ function App() {
   const [turns, setTurns] = useState<ChatTurn[]>([])
 
   const [query, setQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<SearchMode>('semantic')
   const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
 
   useEffect(() => {
@@ -170,7 +172,7 @@ function App() {
         kind: 'ok',
         data: await fetchJson<SearchResult>(
           `/repositories/${owner}/${name}/search`,
-          postJson({ query, limit: 5 }),
+          postJson({ query, limit: 5, mode: searchMode }),
         ),
       })
     } catch (error) {
@@ -235,6 +237,8 @@ function App() {
               state={search}
               query={query}
               onQueryChange={setQuery}
+              mode={searchMode}
+              onModeChange={setSearchMode}
               onSubmit={handleSearch}
               ready={indexed}
             />

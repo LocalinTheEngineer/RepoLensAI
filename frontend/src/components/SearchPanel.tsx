@@ -1,26 +1,45 @@
-import type { Async, SearchResult } from '../api'
+import type { Async, SearchMode, SearchResult } from '../api'
 
 type Props = {
   state: Async<SearchResult>
   query: string
   onQueryChange: (value: string) => void
+  mode: SearchMode
+  onModeChange: (mode: SearchMode) => void
   onSubmit: () => void
   /** Repository indekslenmeden arama yapilamaz. */
   ready: boolean
 }
 
+/** Iki arama modunun kisa aciklamasi. */
+const MODE_INFO: Record<SearchMode, { label: string; hint: string }> = {
+  semantic: {
+    label: 'Anlamsal',
+    hint: 'Kavram eslestirir. Kelimeler farkli olsa da benzer anlamli kodu bulur.',
+  },
+  keyword: {
+    label: 'Kelime (BM25)',
+    hint: 'Birebir isim arar. "locate_app" yazinca o fonksiyonun kendisini bulur.',
+  },
+}
+
 /** Ornek sorgular; kullanici ne yazacagini bilmesin diye. */
-const EXAMPLES = [
-  'how does authentication work',
-  'where is the database connected',
-  'how are configuration values loaded',
-]
+const EXAMPLES: Record<SearchMode, string[]> = {
+  semantic: [
+    'how does authentication work',
+    'where is the database connected',
+    'how are configuration values loaded',
+  ],
+  keyword: ['locate_app', 'SECRET_KEY_FALLBACKS', 'url_map'],
+}
 
 /** Anlamsal kod aramasi: sorgu kutusu ve sonuclar. */
 function SearchPanel({
   state,
   query,
   onQueryChange,
+  mode,
+  onModeChange,
   onSubmit,
   ready,
 }: Props) {
@@ -35,13 +54,29 @@ function SearchPanel({
     <section className="result scan">
       <h2>Kod arama</h2>
       <p className="note">
-        Bir kavram yaz; sistem kelime degil <strong>anlam</strong> eslestirir.
-        Aradigin metnin kodda birebir gecmesi gerekmez.
+        LLM devreye girmeden, ham arama sonuclarini gosterir. Iki farkli
+        yontem var; hangisinin ne buldugunu karsilastirabilirsin.
       </p>
-      <p className="note warning-note">
-        Kullanilan model yalnizca Ingilizce icin egitilmistir; sorgularini
-        Ingilizce yaz. Turkce sorgular alakasiz sonuc dondurur.
-      </p>
+      {mode === 'semantic' && (
+        <p className="note warning-note">
+          Anlamsal arama yalnizca Ingilizce icin egitilmis bir model kullanir;
+          sorgularini Ingilizce yaz.
+        </p>
+      )}
+
+      <div className="mode-row">
+        {(Object.keys(MODE_INFO) as SearchMode[]).map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={`mode-button ${mode === option ? 'mode-button--active' : ''}`}
+            onClick={() => onModeChange(option)}
+          >
+            {MODE_INFO[option].label}
+          </button>
+        ))}
+      </div>
+      <p className="note">{MODE_INFO[mode].hint}</p>
 
       <form className="repo-form" onSubmit={handleSubmit}>
         <div className="repo-row">
@@ -72,7 +107,7 @@ function SearchPanel({
 
       {ready && state.kind === 'idle' && (
         <ul className="pill-list">
-          {EXAMPLES.map((example) => (
+          {EXAMPLES[mode].map((example) => (
             <li key={example}>
               <button
                 type="button"
@@ -113,7 +148,8 @@ function SearchPanel({
                     </code>
                   </span>
                   <span className="score-badge">
-                    benzerlik {hit.score.toFixed(3)}
+                    {state.data.mode === 'keyword' ? 'BM25' : 'benzerlik'}{' '}
+                    {hit.score.toFixed(state.data.mode === 'keyword' ? 2 : 3)}
                   </span>
                 </header>
                 <pre className="chunk-preview">{hit.content}</pre>
