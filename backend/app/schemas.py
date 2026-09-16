@@ -190,8 +190,24 @@ class AskRequest(BaseModel):
     )
 
 
+class CitationOut(BaseModel):
+    """Cevap metninde gecen bir kaynak referansi ve dogrulama sonucu.
+
+    status degerleri:
+      verified     -> referans araligi, verilen bir parcanin icinde
+      out_of_range -> dosya verilmis ama aralik parcalarin disina tasiyor
+      unknown_file -> dosya modele hic verilmemis (uydurma)
+    """
+
+    file_path: str
+    start_line: int
+    end_line: int
+    status: str
+    chunk_id: str | None
+
+
 class AskResponse(BaseModel):
-    """LLM cevabi ve dayandigi kaynaklar."""
+    """LLM cevabi, dayandigi kaynaklar ve citation dogrulamasi."""
 
     owner: str
     name: str
@@ -201,3 +217,5 @@ class AskResponse(BaseModel):
     retrieval_ms: float
     generation_ms: float
     sources: list[SearchHitOut]
+    citations: list[CitationOut]
+    unverified_citations: int

@@ -59,8 +59,11 @@ Follow these rules strictly:
 3. Never invent file paths, function names, class names or line numbers. Only
    mention identifiers that literally appear in the excerpts.
 4. Be concrete and brief. Describe the actual mechanism, not generalities.
-5. When you refer to code, cite it as `path:start-end`, copying the exact header
-   of the excerpt you used.
+5. Every answer that describes code MUST contain at least one citation written
+   as `path:start-end`. You may narrow the range to the exact lines you mean,
+   but the range must stay INSIDE the excerpt's own range. Never cite a line
+   number outside the excerpts you were given. (The only answer allowed with
+   no citation is the one where you report finding no evidence.)
 6. Answer in English."""
 
 _client: genai.Client | None = None
@@ -76,10 +79,18 @@ class Answer:
     used_chunk_ids: list[str]
 
 
-def is_busy_error(error: Exception) -> bool:
-    """Hata gecici bir kapasite sorunu mu? (yedek modele gecmeye deger mi)"""
+def is_retriable_error(error: Exception) -> bool:
+    """Baska bir modelle tekrar denemeye deger bir hata mi?
+
+    503 = model su an yogun (gecici kapasite sorunu).
+    429 = istek siniri; ucretsiz katmanda limitler MODEL BASINA ayri tutulur,
+          bu yuzden baska bir model calisabiliyor.
+    """
     message = str(error)
-    return "503" in message or "UNAVAILABLE" in message
+    return any(
+        kod in message
+        for kod in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED")
+    )
 
 
 def get_client() -> genai.Client:
@@ -128,8 +139,8 @@ def describe_api_failure(error: Exception) -> tuple[str, int]:
 
     if "429" in message or "RESOURCE_EXHAUSTED" in message:
         return (
-            "Gunluk ucretsiz kota doldu ya da cok hizli istek gonderildi. "
-            "Bir sure bekleyip tekrar dene.",
+            "Istek siniri asildi. Ucretsiz katmanda dakikada sinirli sayida "
+            "soru sorulabilir; bir dakika bekleyip tekrar dene.",
             429,
         )
     if "503" in message or "UNAVAILABLE" in message:
@@ -185,7 +196,7 @@ def generate_answer(
             )
         except Exception as error:
             last_error = error
-            if is_busy_error(error):
+            if is_retriable_error(error):
                 continue  # bu model yogun, sonrakini dene
             message, status_code = describe_api_failure(error)
             raise RepositoryError(message, status_code=status_code) from error
@@ -201,10 +212,10 @@ def generate_answer(
         last_error = RuntimeError("bos cevap")
 
     # Butun modeller denendi, hicbiri cevap veremedi.
-    if last_error is not None and is_busy_error(last_error):
+    if last_error is not None and is_retriable_error(last_error):
         raise RepositoryError(
-            "Denenen modellerin hepsi su an yogun. Birkac dakika sonra "
-            "tekrar dene.",
+            "Denenen modellerin hepsi su an mesgul ya da istek sinirina "
+            "takildi. Birkac dakika bekleyip tekrar dene.",
             status_code=503,
         ) from last_error
 

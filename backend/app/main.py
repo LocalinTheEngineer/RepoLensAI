@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import (
     AskRequest,
     AskResponse,
+    CitationOut,
     ChunkEmbeddingSample,
     ChunkResponse,
     ChunkSummary,
@@ -52,6 +53,7 @@ from app.services.file_scanner import (
     scan_repository,
 )
 from app.services.answerer import generate_answer
+from app.services.citations import count_unverified, verify_citations
 from app.services.vector_store import search as search_vectors
 from app.services.vector_store import store_chunks, stored_count
 from app.services.repository import (
@@ -365,6 +367,10 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         generation_started = time.perf_counter()
         answer = generate_answer(ref, payload.question, hits)
         generation_ms = (time.perf_counter() - generation_started) * 1000
+
+        # Modelin yazdigi kaynak referanslarini, kendisine VERILEN parcalarla
+        # karsilastir. Uydurma referanslari boylece yakalariz.
+        citations = verify_citations(answer.text, hits)
     except RepositoryError as error:
         raise HTTPException(
             status_code=error.status_code, detail=error.message
@@ -389,4 +395,15 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
             )
             for hit in hits
         ],
+        citations=[
+            CitationOut(
+                file_path=citation.file_path,
+                start_line=citation.start_line,
+                end_line=citation.end_line,
+                status=citation.status,
+                chunk_id=citation.chunk_id,
+            )
+            for citation in citations
+        ],
+        unverified_citations=count_unverified(citations),
     )
