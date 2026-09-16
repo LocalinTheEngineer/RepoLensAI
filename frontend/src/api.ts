@@ -90,6 +90,21 @@ export type SearchResult = {
   hits: SearchHit[]
 }
 
+/**
+ * Cevap metninde gecen bir kaynak referansi ve dogrulama sonucu.
+ *
+ * verified     -> referans araligi, modele verilen bir parcanin icinde
+ * out_of_range -> dosya verilmis ama aralik parcalarin disina tasiyor
+ * unknown_file -> dosya modele hic verilmemis (uydurma)
+ */
+export type Citation = {
+  file_path: string
+  start_line: number
+  end_line: number
+  status: 'verified' | 'out_of_range' | 'unknown_file'
+  chunk_id: string | null
+}
+
 export type AskResult = {
   owner: string
   name: string
@@ -99,6 +114,8 @@ export type AskResult = {
   retrieval_ms: number
   generation_ms: number
   sources: SearchHit[]
+  citations: Citation[]
+  unverified_citations: number
 }
 
 /** Backend'den gelen eleme sebeplerinin ekranda gosterilecek karsiliklari. */

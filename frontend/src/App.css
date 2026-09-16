@@ -428,3 +428,83 @@
   background: none;
   padding: 0;
 }
+
+/* ---------- Kaynak dogrulama (citation) ---------- */
+
+.citations {
+  margin-top: 16px;
+}
+
+.citation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.citation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.citation:disabled {
+  cursor: default;
+}
+
+.citation code {
+  padding: 0;
+  background: none;
+  font-size: 13px;
+}
+
+.citation-symbol {
+  font-weight: 700;
+}
+
+.citation--verified {
+  border-color: var(--accent-border);
+}
+
+.citation--verified .citation-symbol {
+  color: var(--accent);
+}
+
+.citation--out_of_range,
+.citation--unknown_file {
+  border-color: rgba(220, 38, 38, 0.6);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.citation--out_of_range .citation-symbol,
+.citation--unknown_file .citation-symbol {
+  color: rgb(248, 113, 113);
+}
+
+.citation-warning-text {
+  color: rgb(248, 113, 113);
+}
+
+.citation-warning {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-left: 3px solid rgba(220, 38, 38, 0.6);
+  border-radius: 4px;
+  background: rgba(220, 38, 38, 0.08);
+  font-size: 14px;
+}
+
+/* Referanstan gelindiginde hedef kart belirsin. */
+.chunk:target {
+  border-color: var(--accent);
+}

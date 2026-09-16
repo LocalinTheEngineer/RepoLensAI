@@ -1,5 +1,6 @@
 import Markdown from 'react-markdown'
 import type { Async, AskResult } from '../api'
+import CitationList from './CitationList'
 
 type Props = {
   state: Async<AskResult>
@@ -105,6 +106,11 @@ function AskPanel({
             <Markdown>{state.data.answer}</Markdown>
           </article>
 
+          <CitationList
+            citations={state.data.citations}
+            unverified={state.data.unverified_citations}
+          />
+
           <p className="note">
             {state.data.model} &middot; arama {state.data.retrieval_ms} ms
             &middot; cevap {(state.data.generation_ms / 1000).toFixed(1)} sn
@@ -116,7 +122,11 @@ function AskPanel({
             </summary>
             <div className="chunk-list chunk-list--open">
               {state.data.sources.map((source) => (
-                <article key={source.chunk_id} className="chunk">
+                <article
+                  key={source.chunk_id}
+                  id={`source-${source.chunk_id}`}
+                  className="chunk"
+                >
                   <header className="chunk-header">
                     <code className="file-path">
                       {source.file_path}:{source.start_line}&ndash;
