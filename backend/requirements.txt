@@ -17,3 +17,11 @@ google-genai==2.23.0
 
 # .env dosyasindaki API anahtarini okur.
 python-dotenv==1.2.3
+
+# Adim 11: kodu satir sayisina gore degil, gercek yapisina gore boler.
+# Her dil icin ayri bir gramer paketi gerekir.
+tree-sitter==0.26.0
+tree-sitter-python==0.25.0
+tree-sitter-javascript==0.25.0
+tree-sitter-typescript==0.23.2
+tree-sitter-java==0.23.5

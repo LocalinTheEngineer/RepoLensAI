@@ -19,7 +19,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import (
+    Distance,
+    Filter,
+    FilterSelector,
+    PointStruct,
+    VectorParams,
+)
 
 from app.services.chunker import Chunk
 from app.services.embedder import EMBEDDING_DIMENSIONS
@@ -56,6 +62,8 @@ class SearchHit:
     end_line: int
     content: str
     score: float
+    symbol_name: str | None = None
+    symbol_type: str | None = None
 
 
 def get_client() -> QdrantClient:
@@ -99,10 +107,31 @@ def point_id(chunk_id: str) -> str:
     return str(uuid.uuid5(POINT_NAMESPACE, chunk_id))
 
 
-def ensure_collection(ref: RepositoryRef) -> str:
-    """Repository icin koleksiyonu olusturur (zaten varsa dokunmaz)."""
+def ensure_collection(ref: RepositoryRef, reset: bool = False) -> str:
+    """Repository icin koleksiyonu olusturur.
+
+    reset=True ise once mevcut koleksiyonu siler. Indeksleme her zaman
+    reponun TAMAMINI isledigi icin bu dogru davranistir: parcalama yontemi
+    degistiginde (orn. satir tabanlidan AST'ye gecis) eski parcalar farkli
+    chunk_id tasir ve silinmezse veritabaninda oluru kalirdi.
+
+    Adim 19'da (incremental indexing) yalnizca degisen dosyalari guncelleyen
+    bir yol eklenecek; o zaman bu sifirlama secenege baglanacak.
+
+    DIKKAT: Qdrant yerel modunda `delete_collection()` yeterli DEGILDIR.
+    Koleksiyonu kayittan dusuruyor (`collection_exists` False donuyor) ama
+    diskteki veriyi silmiyor; yeniden olusturuldugunda eski kayitlar geri
+    geliyor. Bu yuzden noktalari bos filtreyle tek tek siliyoruz.
+    """
     client = get_client()
     name = collection_name(ref)
+
+    if reset and client.collection_exists(name):
+        client.delete(
+            collection_name=name,
+            points_selector=FilterSelector(filter=Filter()),
+        )
+        return name
 
     if not client.collection_exists(name):
         client.create_collection(
@@ -131,7 +160,8 @@ def store_chunks(
         )
 
     client = get_client()
-    name = ensure_collection(ref)
+    # Tam yeniden indeksleme: eski parcalar kalmasin.
+    name = ensure_collection(ref, reset=True)
 
     points = [
         PointStruct(
@@ -143,6 +173,8 @@ def store_chunks(
                 "start_line": chunk.start_line,
                 "end_line": chunk.end_line,
                 "content": chunk.content,
+                "symbol_name": chunk.symbol_name,
+                "symbol_type": chunk.symbol_type,
             },
         )
         for chunk, vector in zip(chunks, vectors)
@@ -197,6 +229,8 @@ def search(
                 end_line=payload.get("end_line", 0),
                 content=payload.get("content", ""),
                 score=float(point.score),
+                symbol_name=payload.get("symbol_name"),
+                symbol_type=payload.get("symbol_type"),
             )
         )
     return hits

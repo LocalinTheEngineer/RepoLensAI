@@ -41,11 +41,11 @@ from app.services.embedder import (
     embed_query,
     embed_texts,
 )
+from app.services.ast_chunker import chunk_repository
 from app.services.chunker import (
     CHUNK_OVERLAP_LINES,
     CHUNK_SIZE_LINES,
     MAX_CHUNKS_IN_RESPONSE,
-    chunk_repository,
 )
 from app.services.file_scanner import (
     MAX_FILES_IN_RESPONSE,
@@ -196,6 +196,8 @@ def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
                 end_line=chunk.end_line,
                 line_count=chunk.line_count,
                 preview=chunk.preview,
+                symbol_name=chunk.symbol_name,
+                symbol_type=chunk.symbol_type,
             )
             for chunk in shown
         ],
@@ -342,6 +344,8 @@ def search_repository(
                 end_line=hit.end_line,
                 content=hit.content,
                 score=round(hit.score, 4),
+                symbol_name=hit.symbol_name,
+                symbol_type=hit.symbol_type,
             )
             for hit in hits
         ],
@@ -392,6 +396,8 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
                 end_line=hit.end_line,
                 content=hit.content,
                 score=round(hit.score, 4),
+                symbol_name=hit.symbol_name,
+                symbol_type=hit.symbol_type,
             )
             for hit in hits
         ],

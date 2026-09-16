@@ -120,8 +120,15 @@ def build_prompt(question: str, hits: list[SearchHit]) -> str:
     """
     bolumler = []
     for index, hit in enumerate(hits, start=1):
+        # Parca bir fonksiyon/class ise adini da baslikta veriyoruz.
+        # Modelin "neye baktigini" bilmesi cevabin isabetini artirir.
+        etiket = ""
+        if hit.symbol_name:
+            etiket = f" ({hit.symbol_type or 'symbol'} {hit.symbol_name})"
+
         bolumler.append(
-            f"--- Excerpt {index}: {hit.file_path}:{hit.start_line}-{hit.end_line} ---\n"
+            f"--- Excerpt {index}: "
+            f"{hit.file_path}:{hit.start_line}-{hit.end_line}{etiket} ---\n"
             f"{hit.content}"
         )
 

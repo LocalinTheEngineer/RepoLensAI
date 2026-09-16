@@ -11,9 +11,7 @@ temeli olacak.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 
-from app.services.file_scanner import read_text_file, scan_repository
 
 # Bir parcanin hedef satir sayisi. Yol haritasi 100-150 araligini oneriyor.
 CHUNK_SIZE_LINES = 120
@@ -35,13 +33,20 @@ PREVIEW_CHARS = 200
 
 @dataclass(frozen=True)
 class Chunk:
-    """Tek bir kod parcasi ve kaynak bilgisi."""
+    """Tek bir kod parcasi ve kaynak bilgisi.
+
+    symbol_name / symbol_type yalnizca AST ile bolunmus parcalarda dolu olur
+    (orn. "get_signing_serializer" / "function"). Satir tabanli bolmede
+    ikisi de None kalir.
+    """
 
     chunk_id: str
     file_path: str
     start_line: int
     end_line: int
     content: str
+    symbol_name: str | None = None
+    symbol_type: str | None = None
 
     @property
     def line_count(self) -> int:
@@ -101,25 +106,3 @@ def chunk_text(file_path: str, text: str) -> list[Chunk]:
         start += CHUNK_STEP_LINES
 
     return chunks
-
-
-def chunk_repository(repo_path: Path) -> ChunkingResult:
-    """Repository'deki islenecek tum dosyalari parcalara ayirir.
-
-    Not: dosyalar tarama sirasinda bir kez, burada bir kez daha okunuyor.
-    Alternatif butun repoyu bellekte tutmak olurdu; iki kez okumak daha guvenli.
-    """
-    scan = scan_repository(repo_path)
-    result = ChunkingResult()
-
-    for source in scan.selected:
-        text = read_text_file(repo_path / source.path)
-        if text is None:
-            continue
-
-        produced = chunk_text(source.path, text)
-        if produced:
-            result.file_count += 1
-            result.chunks.extend(produced)
-
-    return result

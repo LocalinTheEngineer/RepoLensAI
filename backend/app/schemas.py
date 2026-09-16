@@ -58,6 +58,8 @@ class ChunkSummary(BaseModel):
     end_line: int
     line_count: int
     preview: str
+    symbol_name: str | None = None
+    symbol_type: str | None = None
 
 
 class ChunkResponse(BaseModel):
@@ -160,6 +162,8 @@ class SearchHitOut(BaseModel):
     end_line: int
     content: str
     score: float
+    symbol_name: str | None = None
+    symbol_type: str | None = None
 
 
 class SearchResponse(BaseModel):
