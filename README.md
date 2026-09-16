@@ -18,11 +18,12 @@ So you can go check whether the answer is actually true.
 
 ## Where it's at
 
-Early. Give it a public GitHub URL and the backend clones the repo, picks the
-files worth processing, splits them into chunks that carry their own file path
-and line range, embeds them and stores them in a vector database. Semantic
-search over the API works — step 6 of 25. No UI for search and no LLM answers
-yet, and queries have to be in English.
+Give it a public GitHub URL and it clones the repo, picks the files worth
+processing, splits them into chunks that carry their own file path and line
+range, embeds them into a vector database, and lets you search the code by
+meaning rather than by keyword — ask "how are configuration values loaded"
+and it finds the right file. Step 7 of 25. No LLM answers yet, and queries
+have to be in English.
 
 ## Running it
 
