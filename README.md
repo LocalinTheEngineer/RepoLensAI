@@ -18,10 +18,11 @@ So you can go check whether the answer is actually true.
 
 ## Where it's at
 
-Early. You can paste a public GitHub URL and the backend clones it, works out
-which files are worth processing, splits them into chunks that carry their own
-file path and line range, and turns those chunks into embeddings — step 5 of
-25. Nothing is stored or searchable yet, and queries have to be in English.
+Early. Give it a public GitHub URL and the backend clones the repo, picks the
+files worth processing, splits them into chunks that carry their own file path
+and line range, embeds them and stores them in a vector database. Semantic
+search over the API works — step 6 of 25. No UI for search and no LLM answers
+yet, and queries have to be in English.
 
 ## Running it
 
