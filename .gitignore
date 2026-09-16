@@ -14,6 +14,9 @@ __pycache__/
 # Klonlanan repository'ler buraya iner - commit edilmez
 backend/workspace/
 
+# Qdrant yerel veritabani dosyalari - commit edilmez
+backend/qdrant_data/
+
 # ---------------------------------------------------------------
 # Node / frontend
 # ---------------------------------------------------------------
