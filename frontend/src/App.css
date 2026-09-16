@@ -766,3 +766,29 @@
     align-self: stretch;
   }
 }
+
+/* ---------- Sembol etiketi (AST parcalama) ---------- */
+
+.chunk-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.symbol {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.symbol-kind {
+  padding: 1px 6px;
+  margin-right: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: 4px;
+}

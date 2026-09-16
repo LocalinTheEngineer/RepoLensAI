@@ -60,10 +60,20 @@ function ChatMessage({ turn }: Props) {
                   className="chunk"
                 >
                   <header className="chunk-header">
-                    <code className="file-path">
-                      {source.file_path}:{source.start_line}&ndash;
-                      {source.end_line}
-                    </code>
+                    <span className="chunk-title">
+                      {source.symbol_name && (
+                        <span className="symbol">
+                          <span className="symbol-kind">
+                            {source.symbol_type}
+                          </span>{' '}
+                          {source.symbol_name}
+                        </span>
+                      )}
+                      <code className="file-path">
+                        {source.file_path}:{source.start_line}&ndash;
+                        {source.end_line}
+                      </code>
+                    </span>
                     <span className="score-badge">
                       benzerlik {source.score.toFixed(3)}
                     </span>

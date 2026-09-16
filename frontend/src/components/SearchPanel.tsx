@@ -101,9 +101,17 @@ function SearchPanel({
             {state.data.hits.map((hit) => (
               <article key={hit.chunk_id} className="chunk">
                 <header className="chunk-header">
-                  <code className="file-path">
-                    {hit.file_path}:{hit.start_line}&ndash;{hit.end_line}
-                  </code>
+                  <span className="chunk-title">
+                    {hit.symbol_name && (
+                      <span className="symbol">
+                        <span className="symbol-kind">{hit.symbol_type}</span>{' '}
+                        {hit.symbol_name}
+                      </span>
+                    )}
+                    <code className="file-path">
+                      {hit.file_path}:{hit.start_line}&ndash;{hit.end_line}
+                    </code>
+                  </span>
                   <span className="score-badge">
                     benzerlik {hit.score.toFixed(3)}
                   </span>

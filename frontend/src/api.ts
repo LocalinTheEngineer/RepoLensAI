@@ -47,6 +47,8 @@ export type ChunkSummary = {
   end_line: number
   line_count: number
   preview: string
+  symbol_name: string | null
+  symbol_type: string | null
 }
 
 export type ChunkScan = {
@@ -80,6 +82,8 @@ export type SearchHit = {
   end_line: number
   content: string
   score: number
+  symbol_name: string | null
+  symbol_type: string | null
 }
 
 export type SearchResult = {
