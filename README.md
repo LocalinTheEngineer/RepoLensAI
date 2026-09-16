@@ -19,8 +19,9 @@ So you can go check whether the answer is actually true.
 ## Where it's at
 
 Early. You can paste a public GitHub URL and the backend clones it, works out
-which files are worth processing, and splits them into chunks that carry their
-own file path and line range — step 4 of 25. No embeddings or answers yet.
+which files are worth processing, splits them into chunks that carry their own
+file path and line range, and turns those chunks into embeddings — step 5 of
+25. Nothing is stored or searchable yet, and queries have to be in English.
 
 ## Running it
 
