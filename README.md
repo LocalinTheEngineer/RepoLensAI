@@ -18,24 +18,33 @@ So you can go check whether the answer is actually true.
 
 ## Where it's at
 
-Give it a public GitHub URL and it clones the repo, picks the files worth
-processing, splits them into chunks that carry their own file path and line
-range, embeds them into a vector database, and lets you search the code by
-meaning rather than by keyword — ask "how are configuration values loaded"
-and it finds the right file. Step 7 of 25. No LLM answers yet, and queries
-have to be in English.
+The core works end to end: paste a public GitHub URL, it clones the repo,
+picks the files worth processing, splits them into chunks that carry their own
+file path and line range, embeds them into a vector database, and answers
+questions about the code — grounded in the actual files, with the line ranges
+it used shown underneath.
+
+If the indexed code doesn't contain the answer, it says so instead of making
+one up.
+
+Step 8 of 25. Questions have to be in English.
 
 ## Running it
 
-Backend:
+Backend. You need a Gemini API key first — the free tier at
+[aistudio.google.com](https://aistudio.google.com) is enough and doesn't ask
+for a card.
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+Copy-Item .env.example .env   # then put your key in it
 uvicorn app.main:app --reload
 ```
+
+The first request downloads the embedding model (~90 MB).
 
 Frontend, in a second terminal:
 
@@ -50,5 +59,7 @@ page just shows a connection error.
 
 ## Stack
 
-Python + FastAPI, React + TypeScript on Vite. Qdrant, Tree-sitter and Docker are
-in the plan but not in yet.
+Python + FastAPI on the backend, React + TypeScript on Vite up front.
+Embeddings run locally with sentence-transformers (all-MiniLM-L6-v2, 384
+dimensions), vectors live in Qdrant, and Gemini writes the answers.
+Tree-sitter and Docker are in the plan but not in yet.
