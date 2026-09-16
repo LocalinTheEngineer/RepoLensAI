@@ -90,6 +90,17 @@ export type SearchResult = {
   hits: SearchHit[]
 }
 
+export type AskResult = {
+  owner: string
+  name: string
+  question: string
+  answer: string
+  model: string
+  retrieval_ms: number
+  generation_ms: number
+  sources: SearchHit[]
+}
+
 /** Backend'den gelen eleme sebeplerinin ekranda gosterilecek karsiliklari. */
 export const SKIP_LABELS: Record<string, string> = {
   uretilmis_klasor: 'uretilmis klasor (node_modules, dist, build ...)',

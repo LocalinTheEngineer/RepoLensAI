@@ -6,6 +6,7 @@ import {
   fetchJson,
   postJson,
   type Async,
+  type AskResult,
   type ChunkScan,
   type FileScan,
   type Health,
@@ -13,6 +14,7 @@ import {
   type Repository,
   type SearchResult,
 } from './api'
+import AskPanel from './components/AskPanel'
 import ChunkCard from './components/ChunkCard'
 import CloneCard from './components/CloneCard'
 import Feedback from './components/Feedback'
@@ -36,6 +38,9 @@ function App() {
 
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
+
+  const [question, setQuestion] = useState('')
+  const [ask, setAsk] = useState<Async<AskResult>>({ kind: 'idle' })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -66,6 +71,7 @@ function App() {
     setChunks({ kind: 'idle' })
     setIndexState({ kind: 'idle' })
     setSearch({ kind: 'idle' })
+    setAsk({ kind: 'idle' })
 
     let repository: Repository
     try {
@@ -138,6 +144,25 @@ function App() {
     }
   }
 
+  /** Soruyu sorar: ilgili kod parcalari bulunur, LLM cevabi yazar. */
+  async function handleAsk() {
+    if (clone.kind !== 'ok') return
+    const { owner, name } = clone.data
+
+    setAsk({ kind: 'loading' })
+    try {
+      setAsk({
+        kind: 'ok',
+        data: await fetchJson<AskResult>(
+          `/repositories/${owner}/${name}/ask`,
+          postJson({ question, limit: 5 }),
+        ),
+      })
+    } catch (error) {
+      setAsk({ kind: 'error', message: describeError(error) })
+    }
+  }
+
   const busy =
     clone.kind === 'loading' ||
     scan.kind === 'loading' ||
@@ -147,7 +172,7 @@ function App() {
     <main className="app">
       <header className="app-header">
         <h1>RepoLens AI</h1>
-        <p className="subtitle">Adim 7 &mdash; Anlamsal kod aramasi</p>
+        <p className="subtitle">Adim 8 &mdash; Kaynakli AI cevabi</p>
       </header>
 
       <HealthBadge state={health} onRetry={() => setAttempt((n) => n + 1)} />
@@ -193,6 +218,16 @@ function App() {
         loadingText="Parcalar vektore cevrilip kaydediliyor..."
         errorTitle="Indeksleme basarisiz"
       />
+
+      {clone.kind === 'ok' && (
+        <AskPanel
+          state={ask}
+          question={question}
+          onQuestionChange={setQuestion}
+          onSubmit={handleAsk}
+          ready={indexState.kind === 'ok'}
+        />
+      )}
 
       {clone.kind === 'ok' && (
         <SearchPanel
