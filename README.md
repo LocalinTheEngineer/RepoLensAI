@@ -27,7 +27,11 @@ it used shown underneath.
 If the indexed code doesn't contain the answer, it says so instead of making
 one up.
 
-Step 8 of 25. Questions have to be in English.
+Every `file.py:12-40` reference the model writes is checked against the code
+it was actually shown, so a made-up line number gets flagged instead of
+quietly trusted.
+
+Step 9 of 25. Questions have to be in English.
 
 ## Running it
 
