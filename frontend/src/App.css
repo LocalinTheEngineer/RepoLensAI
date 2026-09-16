@@ -280,6 +280,9 @@
 
 .chunk-preview {
   margin: 0;
+  /* Uzun kod parcalari sayfayi ele gecirmesin; kart icinde kaydirilir. */
+  max-height: 320px;
+  overflow: auto;
   padding: 12px;
   font-family: var(--mono);
   font-size: 12.5px;
@@ -340,4 +343,29 @@
   border-left: 3px solid var(--accent);
   background: var(--accent-bg);
   border-radius: 4px;
+}
+
+/* ---------- Arama ---------- */
+
+.pill--button {
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pill--button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.score-badge {
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+/* Arama sonuclari sayfayla birlikte kaysin; ic ice kaydirma olmasin. */
+.chunk-list--open {
+  max-height: none;
+  overflow: visible;
 }
