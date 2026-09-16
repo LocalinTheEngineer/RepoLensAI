@@ -28,13 +28,15 @@ If the indexed code doesn't contain the answer, it says so instead of making
 one up.
 
 Chunks follow function and class boundaries rather than arbitrary line counts,
-so a retrieved excerpt is a whole unit of code with a name attached.
+so a retrieved excerpt is a whole unit of code with a name attached. Search
+runs two ways — by meaning, and by keyword with BM25 for when you know the
+exact identifier you want.
 
 Every `file.py:12-40` reference the model writes is checked against the code
 it was actually shown, so a made-up line number gets flagged instead of
 quietly trusted.
 
-Step 11 of 25. Questions have to be in English.
+Step 12 of 25. Questions have to be in English.
 
 ## Running it
 
