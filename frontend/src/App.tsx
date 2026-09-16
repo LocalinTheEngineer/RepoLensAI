@@ -59,22 +59,33 @@ type ChunkScan = {
   truncated: boolean
 }
 
-type Clone =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'ok'; repository: Repository }
-  | { kind: 'error'; message: string }
+type ChunkEmbeddingSample = {
+  chunk_id: string
+  vector_preview: number[]
+}
 
-type Scan =
-  | { kind: 'idle' }
-  | { kind: 'loading' }
-  | { kind: 'ok'; data: FileScan }
-  | { kind: 'error'; message: string }
+type RepositoryEmbedding = {
+  owner: string
+  name: string
+  embedding_model: string
+  dimensions: number
+  chunk_count: number
+  duration_ms: number
+  chunks_per_second: number
+  samples: ChunkEmbeddingSample[]
+}
 
-type Chunks =
+type QueryEmbedding = {
+  embedding_model: string
+  dimensions: number
+  duration_ms: number
+  vector_preview: number[]
+}
+
+type Async<T> =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'ok'; data: ChunkScan }
+  | { kind: 'ok'; data: T }
   | { kind: 'error'; message: string }
 
 // Backend'den gelen eleme sebeplerinin ekranda gosterilecek karsiliklari.
@@ -122,14 +133,28 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
+/** Vektorun ilk birkac sayisini okunabilir sekilde yazar. */
+function formatVector(values: number[], dimensions: number): string {
+  const shown = values.map((value) => value.toFixed(4)).join(', ')
+  return `[${shown}, ... ${dimensions - values.length} sayi daha]`
+}
+
 function App() {
   const [health, setHealth] = useState<Health>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
   const [url, setUrl] = useState('')
-  const [clone, setClone] = useState<Clone>({ kind: 'idle' })
-  const [scan, setScan] = useState<Scan>({ kind: 'idle' })
-  const [chunks, setChunks] = useState<Chunks>({ kind: 'idle' })
+  const [clone, setClone] = useState<Async<Repository>>({ kind: 'idle' })
+  const [scan, setScan] = useState<Async<FileScan>>({ kind: 'idle' })
+  const [chunks, setChunks] = useState<Async<ChunkScan>>({ kind: 'idle' })
+
+  const [embeddings, setEmbeddings] = useState<Async<RepositoryEmbedding>>({
+    kind: 'idle',
+  })
+  const [query, setQuery] = useState('')
+  const [queryVector, setQueryVector] = useState<Async<QueryEmbedding>>({
+    kind: 'idle',
+  })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -160,6 +185,7 @@ function App() {
     setClone({ kind: 'loading' })
     setScan({ kind: 'idle' })
     setChunks({ kind: 'idle' })
+    setEmbeddings({ kind: 'idle' })
 
     let repository: Repository
     try {
@@ -168,7 +194,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
-      setClone({ kind: 'ok', repository })
+      setClone({ kind: 'ok', data: repository })
     } catch (error) {
       setClone({ kind: 'error', message: describeError(error) })
       return
@@ -196,6 +222,41 @@ function App() {
     }
   }
 
+  /** Parcalari vektore cevirir. Uzun surebilecegi icin ayri bir butona bagli. */
+  async function handleEmbed() {
+    if (clone.kind !== 'ok') return
+    const { owner, name } = clone.data
+
+    setEmbeddings({ kind: 'loading' })
+    try {
+      setEmbeddings({
+        kind: 'ok',
+        data: await fetchJson<RepositoryEmbedding>(
+          `/repositories/${owner}/${name}/embeddings`,
+        ),
+      })
+    } catch (error) {
+      setEmbeddings({ kind: 'error', message: describeError(error) })
+    }
+  }
+
+  async function handleQuerySubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setQueryVector({ kind: 'loading' })
+    try {
+      setQueryVector({
+        kind: 'ok',
+        data: await fetchJson<QueryEmbedding>('/embeddings/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: query }),
+        }),
+      })
+    } catch (error) {
+      setQueryVector({ kind: 'error', message: describeError(error) })
+    }
+  }
+
   const busy =
     clone.kind === 'loading' ||
     scan.kind === 'loading' ||
@@ -205,7 +266,7 @@ function App() {
     <main className="app">
       <header className="app-header">
         <h1>RepoLens AI</h1>
-        <p className="subtitle">Adim 4 &mdash; Kodu parcalara ayir</p>
+        <p className="subtitle">Adim 5 &mdash; Embedding uret</p>
       </header>
 
       <div className={`health health--${health.kind}`}>
@@ -269,21 +330,21 @@ function App() {
       {clone.kind === 'ok' && (
         <section className="result result--ok">
           <h2>
-            {clone.repository.owner}/{clone.repository.name}
+            {clone.data.owner}/{clone.data.name}
           </h2>
           <p>
-            {clone.repository.already_cloned
+            {clone.data.already_cloned
               ? 'Bu repository zaten indirilmisti.'
               : 'Repository basariyla indirildi.'}
           </p>
           <dl className="result-details">
             <dt>Commit</dt>
             <dd>
-              <code>{clone.repository.commit.slice(0, 10)}</code>
+              <code>{clone.data.commit.slice(0, 10)}</code>
             </dd>
             <dt>Konum</dt>
             <dd>
-              <code>{clone.repository.path}</code>
+              <code>{clone.data.path}</code>
             </dd>
           </dl>
         </section>
@@ -306,9 +367,8 @@ function App() {
         <section className="result scan">
           <h2>Islenecek dosyalar</h2>
           <p>
-            Git tarafindan takip edilen{' '}
-            <strong>{scan.data.total_tracked}</strong> dosyadan{' '}
-            <strong>{scan.data.selected_count}</strong> tanesi secildi
+            Git tarafindan takip edilen <strong>{scan.data.total_tracked}</strong>{' '}
+            dosyadan <strong>{scan.data.selected_count}</strong> tanesi secildi
             {scan.data.selected_count > 0 && (
               <>
                 {' '}
@@ -391,28 +451,140 @@ function App() {
             sinira denk gelen bir fonksiyon ikiye bolunup baglamini kaybetmez.
           </p>
 
-          <div className="chunk-list">
-            {chunks.data.chunks.map((chunk) => (
-              <article key={chunk.chunk_id} className="chunk">
-                <header className="chunk-header">
-                  <code className="file-path">{chunk.file_path}</code>
-                  <span className="file-lines">
-                    {chunk.start_line}&ndash;{chunk.end_line} ({chunk.line_count}{' '}
-                    satir)
-                  </span>
-                </header>
-                <pre className="chunk-preview">{chunk.preview}</pre>
-              </article>
+          <details className="skipped">
+            <summary>Parca onizlemelerini goster</summary>
+            <div className="chunk-list">
+              {chunks.data.chunks.map((chunk) => (
+                <article key={chunk.chunk_id} className="chunk">
+                  <header className="chunk-header">
+                    <code className="file-path">{chunk.file_path}</code>
+                    <span className="file-lines">
+                      {chunk.start_line}&ndash;{chunk.end_line} (
+                      {chunk.line_count} satir)
+                    </span>
+                  </header>
+                  <pre className="chunk-preview">{chunk.preview}</pre>
+                </article>
+              ))}
+            </div>
+          </details>
+
+          <div className="embed-actions">
+            <button
+              type="button"
+              className="repo-button"
+              onClick={handleEmbed}
+              disabled={embeddings.kind === 'loading'}
+            >
+              {embeddings.kind === 'loading'
+                ? 'Vektorler uretiliyor...'
+                : 'Parcalari vektore cevir'}
+            </button>
+            <span className="note">
+              {chunks.data.chunk_count} parca islenecek; ilk calistirmada model
+              indirilir.
+            </span>
+          </div>
+        </section>
+      )}
+
+      {embeddings.kind === 'loading' && (
+        <section className="result">
+          <p>Parcalar vektore cevriliyor, bu biraz surebilir&hellip;</p>
+        </section>
+      )}
+
+      {embeddings.kind === 'error' && (
+        <section className="result result--error">
+          <h2>Vektor uretilemedi</h2>
+          <p>{embeddings.message}</p>
+        </section>
+      )}
+
+      {embeddings.kind === 'ok' && (
+        <section className="result result--ok">
+          <h2>Vektorler hazir</h2>
+          <p>
+            <strong>{embeddings.data.chunk_count}</strong> parca,{' '}
+            <strong>{embeddings.data.dimensions}</strong> boyutlu vektorlere
+            cevrildi &mdash; {(embeddings.data.duration_ms / 1000).toFixed(1)}{' '}
+            saniye ({embeddings.data.chunks_per_second} parca/saniye).
+          </p>
+          <p className="note">
+            Model: <code>{embeddings.data.embedding_model}</code>
+          </p>
+
+          <div className="vector-list">
+            {embeddings.data.samples.map((sample) => (
+              <div key={sample.chunk_id} className="vector-row">
+                <code className="file-path">{sample.chunk_id}</code>
+                <code className="vector-values">
+                  {formatVector(sample.vector_preview, embeddings.data.dimensions)}
+                </code>
+              </div>
             ))}
           </div>
 
-          {chunks.data.truncated && (
-            <p className="note">
-              Onizleme ilk {chunks.data.chunks.length} parcayla sinirlandi.
-            </p>
-          )}
+          <p className="note">
+            Vektorler henuz kaydedilmiyor; kalici depolama Adim 6&apos;da Qdrant
+            ile gelecek.
+          </p>
         </section>
       )}
+
+      <section className="result scan">
+        <h2>Sorgu vektoru</h2>
+        <p className="note">
+          Ayni model kullanici sorgusunu da vektore cevirebilmeli &mdash; arama
+          bu iki vektoru karsilastirarak calisacak.
+        </p>
+        <p className="note warning-note">
+          Kullanilan model yalnizca Ingilizce icin egitilmistir; sorgularini
+          Ingilizce yaz. Turkce sorgular alakasiz sonuc dondurur.
+        </p>
+
+        <form className="repo-form" onSubmit={handleQuerySubmit}>
+          <div className="repo-row">
+            <input
+              className="repo-input"
+              type="text"
+              placeholder="how does authentication work"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              disabled={queryVector.kind === 'loading'}
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              className="repo-button"
+              disabled={queryVector.kind === 'loading' || query.trim() === ''}
+            >
+              {queryVector.kind === 'loading' ? 'Cevriliyor...' : 'Vektore cevir'}
+            </button>
+          </div>
+        </form>
+
+        {queryVector.kind === 'error' && (
+          <p className="query-error">{queryVector.message}</p>
+        )}
+
+        {queryVector.kind === 'ok' && (
+          <div className="vector-list">
+            <div className="vector-row">
+              <code className="file-path">
+                {queryVector.data.dimensions} boyut &middot;{' '}
+                {queryVector.data.duration_ms} ms
+              </code>
+              <code className="vector-values">
+                {formatVector(
+                  queryVector.data.vector_preview,
+                  queryVector.data.dimensions,
+                )}
+              </code>
+            </div>
+          </div>
+        )}
+      </section>
     </main>
   )
 }

@@ -288,3 +288,56 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ---------- Embedding bolumu ---------- */
+
+.embed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.vector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.vector-row {
+  /* Flex ogeleri varsayilan olarak sikisir; icerik ezilmesin diye kapatiyoruz. */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.vector-values {
+  padding: 0;
+  background: none;
+  font-size: 12.5px;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.query-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+  font-size: 15px;
+}
+
+.warning-note {
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-bg);
+  border-radius: 4px;
+}
