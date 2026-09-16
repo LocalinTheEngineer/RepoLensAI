@@ -25,3 +25,7 @@ tree-sitter-python==0.25.0
 tree-sitter-javascript==0.25.0
 tree-sitter-typescript==0.23.2
 tree-sitter-java==0.23.5
+
+# Adim 12: kelime tabanli (lexical) arama. Anlamsal aramanin yapamadigi
+# birebir isim eslestirmesini yapar (orn. "JwtService").
+rank-bm25==0.2.2

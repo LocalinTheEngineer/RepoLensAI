@@ -1,5 +1,7 @@
 """API'ye gelen ve API'den donen verilerin sekilleri (Pydantic modelleri)."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -151,6 +153,13 @@ class SearchRequest(BaseModel):
         le=20,
         description="Kac sonuc dondurulecek",
     )
+    mode: Literal["semantic", "keyword"] = Field(
+        "semantic",
+        description=(
+            "semantic = anlamsal (embedding) arama, "
+            "keyword = kelime tabanli (BM25) arama"
+        ),
+    )
 
 
 class SearchHitOut(BaseModel):
@@ -167,11 +176,17 @@ class SearchHitOut(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    """Arama sonucu ve kaynaklari."""
+    """Arama sonucu ve kaynaklari.
+
+    DIKKAT: skor olcegi moda gore farklidir. semantic modda kosinus
+    benzerligi (0-1 arasi), keyword modda BM25 skoru (sinirsiz pozitif sayi).
+    Ikisi dogrudan karsilastirilamaz.
+    """
 
     owner: str
     name: str
     query: str
+    mode: str
     duration_ms: float
     hits: list[SearchHitOut]
 

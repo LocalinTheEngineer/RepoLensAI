@@ -54,6 +54,7 @@ from app.services.file_scanner import (
 )
 from app.services.answerer import generate_answer
 from app.services.citations import count_unverified, verify_citations
+from app.services.keyword_search import search as search_keywords
 from app.services.vector_store import search as search_vectors
 from app.services.vector_store import store_chunks, stored_count
 from app.services.repository import (
@@ -323,8 +324,12 @@ def search_repository(
     started = time.perf_counter()
     try:
         ref = build_reference(owner, name)
-        query_vector = embed_query(payload.query)
-        hits = search_vectors(ref, query_vector, limit=payload.limit)
+
+        if payload.mode == "keyword":
+            hits = search_keywords(ref, payload.query, limit=payload.limit)
+        else:
+            query_vector = embed_query(payload.query)
+            hits = search_vectors(ref, query_vector, limit=payload.limit)
     except RepositoryError as error:
         raise HTTPException(
             status_code=error.status_code, detail=error.message
@@ -335,6 +340,7 @@ def search_repository(
         owner=ref.owner,
         name=ref.name,
         query=payload.query,
+        mode=payload.mode,
         duration_ms=round(duration_ms, 1),
         hits=[
             SearchHitOut(

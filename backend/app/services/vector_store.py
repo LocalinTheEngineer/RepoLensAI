@@ -48,6 +48,9 @@ POINT_NAMESPACE = uuid.UUID("6f2a9c74-1f4e-5b8a-9d33-7c1e2b4a6d05")
 # Tek seferde Qdrant'a gonderilecek kayit sayisi.
 UPSERT_BATCH_SIZE = 128
 
+# Tum kayitlari okurken tek seferde kac tane cekilecegi.
+SCROLL_BATCH_SIZE = 256
+
 _client: QdrantClient | None = None
 _client_lock = threading.Lock()
 
@@ -186,6 +189,12 @@ def store_chunks(
             points=points[start : start + UPSERT_BATCH_SIZE],
         )
 
+    # Kelime tabanli indeks bu parcalardan kuruluyordu; artik eskidi.
+    # Dairesel import olmasin diye burada, fonksiyon icinde import ediyoruz.
+    from app.services.keyword_search import invalidate
+
+    invalidate(ref)
+
     return len(points)
 
 
@@ -196,6 +205,39 @@ def stored_count(ref: RepositoryRef) -> int:
     if not client.collection_exists(name):
         return 0
     return client.count(collection_name=name, exact=True).count
+
+
+def load_payloads(ref: RepositoryRef) -> list[dict]:
+    """Koleksiyondaki tum parcalarin metadata'sini okur (vektorler haric).
+
+    BM25 indeksi bunlardan kurulur. Vektorleri istemiyoruz: kelime tabanli
+    arama icin gereksiz ve bellekte cok yer tutar.
+    """
+    client = get_client()
+    name = collection_name(ref)
+
+    if not client.collection_exists(name):
+        raise RepositoryError(
+            "Bu repository henuz indekslenmemis. Once indeksle.",
+            status_code=404,
+        )
+
+    payloads: list[dict] = []
+    offset = None
+
+    while True:
+        points, offset = client.scroll(
+            collection_name=name,
+            limit=SCROLL_BATCH_SIZE,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        payloads.extend(point.payload or {} for point in points)
+        if offset is None:
+            break
+
+    return payloads
 
 
 def search(
