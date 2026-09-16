@@ -118,3 +118,55 @@ class EmbedRepositoryResponse(BaseModel):
     duration_ms: float
     chunks_per_second: float
     samples: list[ChunkEmbeddingSample]
+
+
+class IndexResponse(BaseModel):
+    """POST /repositories/{owner}/{name}/index cevabi."""
+
+    owner: str
+    name: str
+    embedding_model: str
+    dimensions: int
+    chunk_count: int
+    stored_count: int
+    embed_duration_ms: float
+    store_duration_ms: float
+
+
+class SearchRequest(BaseModel):
+    """POST /repositories/{owner}/{name}/search istegiyle gonderilen govde."""
+
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Ingilizce arama sorgusu",
+        examples=["how does authentication work"],
+    )
+    limit: int = Field(
+        5,
+        ge=1,
+        le=20,
+        description="Kac sonuc dondurulecek",
+    )
+
+
+class SearchHitOut(BaseModel):
+    """Aramadan donen tek bir kod parcasi."""
+
+    chunk_id: str
+    file_path: str
+    start_line: int
+    end_line: int
+    content: str
+    score: float
+
+
+class SearchResponse(BaseModel):
+    """Arama sonucu ve kaynaklari."""
+
+    owner: str
+    name: str
+    query: str
+    duration_ms: float
+    hits: list[SearchHitOut]

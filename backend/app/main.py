@@ -6,6 +6,8 @@ Yol haritasi:
   Adim 3: .../files       -> repodan yalnizca islenecek kaynak dosyalar
   Adim 4: .../chunks      -> dosyalar satir araligi bilgisiyle parcalara ayrilir
   Adim 5: .../embeddings  -> parcalar ve sorgular sayisal vektore cevrilir
+  Adim 6: .../index       -> vektorler Qdrant'a yazilir
+          .../search      -> sorguya en yakin kod parcalari getirilir
 """
 
 import time
@@ -23,7 +25,11 @@ from app.schemas import (
     EmbedQueryResponse,
     EmbedRepositoryResponse,
     FileScanResponse,
+    IndexResponse,
     RepositoryFile,
+    SearchHitOut,
+    SearchRequest,
+    SearchResponse,
 )
 from app.services.embedder import (
     EMBEDDING_DIMENSIONS,
@@ -42,6 +48,8 @@ from app.services.file_scanner import (
     count_by_extension,
     scan_repository,
 )
+from app.services.vector_store import search as search_vectors
+from app.services.vector_store import store_chunks, stored_count
 from app.services.repository import (
     RepositoryError,
     build_reference,
@@ -55,7 +63,7 @@ from app.services.repository import (
 app = FastAPI(
     title="RepoLens AI API",
     description="GitHub repository'lerini analiz eden AI developer tool'un backend servisi.",
-    version="0.5.0",
+    version="0.6.0",
 )
 
 # Tarayicidaki frontend'in bu API'ye istek atmasina izin verilen adresler.
@@ -259,5 +267,76 @@ def create_repository_embeddings(owner: str, name: str) -> EmbedRepositoryRespon
                 result.chunks[:EMBEDDING_SAMPLE_COUNT],
                 vectors[:EMBEDDING_SAMPLE_COUNT],
             )
+        ],
+    )
+
+
+@app.post("/repositories/{owner}/{name}/index", response_model=IndexResponse)
+def index_repository(owner: str, name: str) -> IndexResponse:
+    """Repository'yi parcalara ayirir, vektore cevirir ve veritabanina yazar.
+
+    Ayni repository tekrar indekslenirse kayitlar cogalmaz; her parca kendi
+    chunk_id'sinden uretilen sabit bir kimlige sahiptir, uzerine yazilir.
+    """
+    try:
+        ref = build_reference(owner, name)
+        path = repository_path(ref)
+        result = chunk_repository(path)
+
+        embed_started = time.perf_counter()
+        vectors = embed_texts([chunk.content for chunk in result.chunks])
+        embed_ms = (time.perf_counter() - embed_started) * 1000
+
+        store_started = time.perf_counter()
+        written = store_chunks(ref, result.chunks, vectors)
+        store_ms = (time.perf_counter() - store_started) * 1000
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    return IndexResponse(
+        owner=ref.owner,
+        name=ref.name,
+        embedding_model=MODEL_NAME,
+        dimensions=EMBEDDING_DIMENSIONS,
+        chunk_count=written,
+        stored_count=stored_count(ref),
+        embed_duration_ms=round(embed_ms, 1),
+        store_duration_ms=round(store_ms, 1),
+    )
+
+
+@app.post("/repositories/{owner}/{name}/search", response_model=SearchResponse)
+def search_repository(
+    owner: str, name: str, payload: SearchRequest
+) -> SearchResponse:
+    """Sorguya anlamca en yakin kod parcalarini dondurur."""
+    started = time.perf_counter()
+    try:
+        ref = build_reference(owner, name)
+        query_vector = embed_query(payload.query)
+        hits = search_vectors(ref, query_vector, limit=payload.limit)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+    duration_ms = (time.perf_counter() - started) * 1000
+
+    return SearchResponse(
+        owner=ref.owner,
+        name=ref.name,
+        query=payload.query,
+        duration_ms=round(duration_ms, 1),
+        hits=[
+            SearchHitOut(
+                chunk_id=hit.chunk_id,
+                file_path=hit.file_path,
+                start_line=hit.start_line,
+                end_line=hit.end_line,
+                content=hit.content,
+                score=round(hit.score, 4),
+            )
+            for hit in hits
         ],
     )
