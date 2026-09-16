@@ -1,5 +1,9 @@
 # Dogrudan bagimliliklar - tam surume sabitlendi.
-# Diger paketler (pydantic, starlette, anyio, h11 ...) bunlarin
+# Diger paketler (pydantic, starlette, torch, transformers ...) bunlarin
 # bagimliligi olarak otomatik kurulur, ayrica yazmaya gerek yok.
 fastapi==0.141.1
 uvicorn==0.53.0
+
+# Adim 5: kod parcalarini ve sorgulari sayisal vektore cevirir.
+# torch'u de beraberinde getirir; ilk kurulum buyuktur.
+sentence-transformers==6.0.1

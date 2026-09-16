@@ -5,18 +5,31 @@ Yol haritasi:
   Adim 2: /repositories   -> verilen GitHub URL'sindeki repo clone ediliyor
   Adim 3: .../files       -> repodan yalnizca islenecek kaynak dosyalar
   Adim 4: .../chunks      -> dosyalar satir araligi bilgisiyle parcalara ayrilir
+  Adim 5: .../embeddings  -> parcalar ve sorgular sayisal vektore cevrilir
 """
+
+import time
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
+    ChunkEmbeddingSample,
     ChunkResponse,
     ChunkSummary,
     CloneRequest,
     CloneResponse,
+    EmbedQueryRequest,
+    EmbedQueryResponse,
+    EmbedRepositoryResponse,
     FileScanResponse,
     RepositoryFile,
+)
+from app.services.embedder import (
+    EMBEDDING_DIMENSIONS,
+    MODEL_NAME,
+    embed_query,
+    embed_texts,
 )
 from app.services.chunker import (
     CHUNK_OVERLAP_LINES,
@@ -42,7 +55,7 @@ from app.services.repository import (
 app = FastAPI(
     title="RepoLens AI API",
     description="GitHub repository'lerini analiz eden AI developer tool'un backend servisi.",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 # Tarayicidaki frontend'in bu API'ye istek atmasina izin verilen adresler.
@@ -173,4 +186,78 @@ def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
             for chunk in shown
         ],
         truncated=chunk_count > len(shown),
+    )
+
+
+# Vektorler 384 sayidan olusur; cevapta yalnizca ilk birkacini gosteriyoruz.
+VECTOR_PREVIEW_LENGTH = 8
+
+# Ornek olarak dondurulecek parca sayisi.
+EMBEDDING_SAMPLE_COUNT = 3
+
+
+@app.post("/embeddings/query", response_model=EmbedQueryResponse)
+def create_query_embedding(payload: EmbedQueryRequest) -> EmbedQueryResponse:
+    """Bir kullanici sorgusunu sayisal vektore cevirir."""
+    started = time.perf_counter()
+    try:
+        vector = embed_query(payload.text)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+    duration_ms = (time.perf_counter() - started) * 1000
+
+    return EmbedQueryResponse(
+        embedding_model=MODEL_NAME,
+        dimensions=len(vector),
+        duration_ms=round(duration_ms, 1),
+        vector_preview=[round(value, 4) for value in vector[:VECTOR_PREVIEW_LENGTH]],
+    )
+
+
+@app.get(
+    "/repositories/{owner}/{name}/embeddings",
+    response_model=EmbedRepositoryResponse,
+)
+def create_repository_embeddings(owner: str, name: str) -> EmbedRepositoryResponse:
+    """Repository'nin tum kod parcalarini vektore cevirir.
+
+    Not: uretilen vektorler henuz hicbir yerde saklanmiyor. Kalici depolama
+    Adim 6'da Qdrant ile gelecek; su an amac uretimin calistigini gostermek.
+    """
+    try:
+        ref = build_reference(owner, name)
+        path = repository_path(ref)
+        result = chunk_repository(path)
+
+        started = time.perf_counter()
+        vectors = embed_texts([chunk.content for chunk in result.chunks])
+        duration_ms = (time.perf_counter() - started) * 1000
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    seconds = duration_ms / 1000
+    return EmbedRepositoryResponse(
+        owner=ref.owner,
+        name=ref.name,
+        embedding_model=MODEL_NAME,
+        dimensions=EMBEDDING_DIMENSIONS,
+        chunk_count=len(vectors),
+        duration_ms=round(duration_ms, 1),
+        chunks_per_second=round(len(vectors) / seconds, 1) if seconds else 0.0,
+        samples=[
+            ChunkEmbeddingSample(
+                chunk_id=chunk.chunk_id,
+                vector_preview=[
+                    round(value, 4) for value in vector[:VECTOR_PREVIEW_LENGTH]
+                ],
+            )
+            for chunk, vector in zip(
+                result.chunks[:EMBEDDING_SAMPLE_COUNT],
+                vectors[:EMBEDDING_SAMPLE_COUNT],
+            )
+        ],
     )
