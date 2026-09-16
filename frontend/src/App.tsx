@@ -14,15 +14,13 @@ import {
   type Repository,
   type SearchResult,
 } from './api'
-import AskPanel from './components/AskPanel'
-import ChunkCard from './components/ChunkCard'
-import CloneCard from './components/CloneCard'
-import Feedback from './components/Feedback'
-import FileScanCard from './components/FileScanCard'
-import HealthBadge from './components/HealthBadge'
-import IndexPanel from './components/IndexPanel'
-import RepoForm from './components/RepoForm'
+import type { ChatTurn } from './components/ChatMessage'
+import ChatPanel from './components/ChatPanel'
 import SearchPanel from './components/SearchPanel'
+import Sidebar from './components/Sidebar'
+
+/** Ana alanda hangi sekme acik. */
+type Tab = 'chat' | 'search'
 
 function App() {
   const [health, setHealth] = useState<Async<Health>>({ kind: 'loading' })
@@ -36,11 +34,13 @@ function App() {
     kind: 'idle',
   })
 
-  const [query, setQuery] = useState('')
-  const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
+  const [tab, setTab] = useState<Tab>('chat')
 
   const [question, setQuestion] = useState('')
-  const [ask, setAsk] = useState<Async<AskResult>>({ kind: 'idle' })
+  const [turns, setTurns] = useState<ChatTurn[]>([])
+
+  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -70,8 +70,8 @@ function App() {
     setScan({ kind: 'idle' })
     setChunks({ kind: 'idle' })
     setIndexState({ kind: 'idle' })
+    setTurns([])
     setSearch({ kind: 'idle' })
-    setAsk({ kind: 'idle' })
 
     let repository: Repository
     try {
@@ -125,7 +125,41 @@ function App() {
     }
   }
 
-  /** Sorguya anlamca en yakin kod parcalarini getirir. */
+  /** Soruyu sohbete ekler, cevabi geldiginde ayni turu gunceller. */
+  async function handleAsk() {
+    if (clone.kind !== 'ok' || question.trim() === '') return
+    const { owner, name } = clone.data
+
+    const id = crypto.randomUUID()
+    const asked = question
+
+    setTurns((previous) => [
+      ...previous,
+      { id, question: asked, result: { kind: 'loading' } },
+    ])
+    setQuestion('')
+
+    /** Yalnizca bu turu gunceller; digerlerine dokunmaz. */
+    function updateTurn(result: ChatTurn['result']) {
+      setTurns((previous) =>
+        previous.map((turn) => (turn.id === id ? { ...turn, result } : turn)),
+      )
+    }
+
+    try {
+      updateTurn({
+        kind: 'ok',
+        data: await fetchJson<AskResult>(
+          `/repositories/${owner}/${name}/ask`,
+          postJson({ question: asked, limit: 5 }),
+        ),
+      })
+    } catch (error) {
+      updateTurn({ kind: 'error', message: describeError(error) })
+    }
+  }
+
+  /** Ham arama: LLM olmadan en yakin kod parcalari. */
   async function handleSearch() {
     if (clone.kind !== 'ok') return
     const { owner, name } = clone.data
@@ -144,101 +178,70 @@ function App() {
     }
   }
 
-  /** Soruyu sorar: ilgili kod parcalari bulunur, LLM cevabi yazar. */
-  async function handleAsk() {
-    if (clone.kind !== 'ok') return
-    const { owner, name } = clone.data
-
-    setAsk({ kind: 'loading' })
-    try {
-      setAsk({
-        kind: 'ok',
-        data: await fetchJson<AskResult>(
-          `/repositories/${owner}/${name}/ask`,
-          postJson({ question, limit: 5 }),
-        ),
-      })
-    } catch (error) {
-      setAsk({ kind: 'error', message: describeError(error) })
-    }
-  }
-
-  const busy =
+  const loadingRepo =
     clone.kind === 'loading' ||
     scan.kind === 'loading' ||
     chunks.kind === 'loading'
 
+  const asking = turns.some((turn) => turn.result.kind === 'loading')
+  const indexed = indexState.kind === 'ok'
+
   return (
-    <main className="app">
-      <header className="app-header">
-        <h1>RepoLens AI</h1>
-        <p className="subtitle">Adim 8 &mdash; Kaynakli AI cevabi</p>
-      </header>
-
-      <HealthBadge state={health} onRetry={() => setAttempt((n) => n + 1)} />
-
-      <RepoForm
+    <div className="shell">
+      <Sidebar
+        health={health}
+        onHealthRetry={() => setAttempt((n) => n + 1)}
         url={url}
         onUrlChange={setUrl}
         onSubmit={handleClone}
-        busy={busy}
+        busy={loadingRepo}
+        clone={clone}
+        scan={scan}
+        chunks={chunks}
+        indexState={indexState}
+        onIndex={handleIndex}
       />
 
-      <Feedback
-        state={clone}
-        loadingText="Repository indiriliyor, bu biraz surebilir..."
-        errorTitle="Indirilemedi"
-      />
-      {clone.kind === 'ok' && <CloneCard repository={clone.data} />}
+      <main className="main">
+        <nav className="tabs">
+          <button
+            type="button"
+            className={`tab ${tab === 'chat' ? 'tab--active' : ''}`}
+            onClick={() => setTab('chat')}
+          >
+            Sohbet
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'search' ? 'tab--active' : ''}`}
+            onClick={() => setTab('search')}
+          >
+            Ham arama
+          </button>
+        </nav>
 
-      <Feedback
-        state={scan}
-        loadingText="Dosyalar taraniyor..."
-        errorTitle="Dosyalar taranamadi"
-      />
-      {scan.kind === 'ok' && <FileScanCard scan={scan.data} />}
-
-      <Feedback
-        state={chunks}
-        loadingText="Kod parcalara ayriliyor..."
-        errorTitle="Parcalama basarisiz"
-      />
-      {chunks.kind === 'ok' && <ChunkCard chunks={chunks.data} />}
-
-      {chunks.kind === 'ok' && (
-        <IndexPanel
-          state={indexState}
-          chunkCount={chunks.data.chunk_count}
-          onIndex={handleIndex}
-        />
-      )}
-
-      <Feedback
-        state={indexState}
-        loadingText="Parcalar vektore cevrilip kaydediliyor..."
-        errorTitle="Indeksleme basarisiz"
-      />
-
-      {clone.kind === 'ok' && (
-        <AskPanel
-          state={ask}
-          question={question}
-          onQuestionChange={setQuestion}
-          onSubmit={handleAsk}
-          ready={indexState.kind === 'ok'}
-        />
-      )}
-
-      {clone.kind === 'ok' && (
-        <SearchPanel
-          state={search}
-          query={query}
-          onQueryChange={setQuery}
-          onSubmit={handleSearch}
-          ready={indexState.kind === 'ok'}
-        />
-      )}
-    </main>
+        {tab === 'chat' ? (
+          <ChatPanel
+            turns={turns}
+            question={question}
+            onQuestionChange={setQuestion}
+            onSubmit={handleAsk}
+            ready={indexed}
+            busy={asking}
+          />
+        ) : (
+          <div className="search-tab">
+            <SearchPanel
+              state={search}
+              query={query}
+              onQueryChange={setQuery}
+              onSubmit={handleSearch}
+              ready={indexed}
+            />
+          </div>
+        )}
+      </main>
+    </div>
   )
 }
 
