@@ -11,3 +11,9 @@ sentence-transformers==6.0.1
 # Adim 6: vektorleri saklar ve "en yakin 5 vektor" aramasini yapar.
 # Yerel modda calisir (Docker gerekmez); Adim 22'de sunucu moduna gecilecek.
 qdrant-client==1.19.1
+
+# Adim 8: LLM cevabi. Google Gen AI SDK (Gemini).
+google-genai==2.23.0
+
+# .env dosyasindaki API anahtarini okur.
+python-dotenv==1.2.3

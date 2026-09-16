@@ -8,6 +8,7 @@ Yol haritasi:
   Adim 5: .../embeddings  -> parcalar ve sorgular sayisal vektore cevrilir
   Adim 6: .../index       -> vektorler Qdrant'a yazilir
           .../search      -> sorguya en yakin kod parcalari getirilir
+  Adim 8: .../ask         -> bulunan parcalardan LLM kaynakli cevap uretir
 """
 
 import time
@@ -16,6 +17,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
+    AskRequest,
+    AskResponse,
     ChunkEmbeddingSample,
     ChunkResponse,
     ChunkSummary,
@@ -48,6 +51,7 @@ from app.services.file_scanner import (
     count_by_extension,
     scan_repository,
 )
+from app.services.answerer import generate_answer
 from app.services.vector_store import search as search_vectors
 from app.services.vector_store import store_chunks, stored_count
 from app.services.repository import (
@@ -63,7 +67,7 @@ from app.services.repository import (
 app = FastAPI(
     title="RepoLens AI API",
     description="GitHub repository'lerini analiz eden AI developer tool'un backend servisi.",
-    version="0.6.0",
+    version="0.8.0",
 )
 
 # Tarayicidaki frontend'in bu API'ye istek atmasina izin verilen adresler.
@@ -329,6 +333,52 @@ def search_repository(
         query=payload.query,
         duration_ms=round(duration_ms, 1),
         hits=[
+            SearchHitOut(
+                chunk_id=hit.chunk_id,
+                file_path=hit.file_path,
+                start_line=hit.start_line,
+                end_line=hit.end_line,
+                content=hit.content,
+                score=round(hit.score, 4),
+            )
+            for hit in hits
+        ],
+    )
+
+
+@app.post("/repositories/{owner}/{name}/ask", response_model=AskResponse)
+def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
+    """Repository hakkindaki soruyu, kod kaynaklarini gostererek cevaplar.
+
+    Akis: soru -> embedding -> Qdrant'tan en alakali parcalar -> LLM.
+    Model yalnizca bu parcalara dayanarak cevap verir; kanit yoksa
+    uydurmak yerine bulamadigini soyler.
+    """
+    try:
+        ref = build_reference(owner, name)
+
+        retrieval_started = time.perf_counter()
+        query_vector = embed_query(payload.question)
+        hits = search_vectors(ref, query_vector, limit=payload.limit)
+        retrieval_ms = (time.perf_counter() - retrieval_started) * 1000
+
+        generation_started = time.perf_counter()
+        answer = generate_answer(ref, payload.question, hits)
+        generation_ms = (time.perf_counter() - generation_started) * 1000
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    return AskResponse(
+        owner=ref.owner,
+        name=ref.name,
+        question=payload.question,
+        answer=answer.text,
+        model=answer.model,
+        retrieval_ms=round(retrieval_ms, 1),
+        generation_ms=round(generation_ms, 1),
+        sources=[
             SearchHitOut(
                 chunk_id=hit.chunk_id,
                 file_path=hit.file_path,

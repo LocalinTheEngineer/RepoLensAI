@@ -170,3 +170,34 @@ class SearchResponse(BaseModel):
     query: str
     duration_ms: float
     hits: list[SearchHitOut]
+
+
+class AskRequest(BaseModel):
+    """POST /repositories/{owner}/{name}/ask istegiyle gonderilen govde."""
+
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Ingilizce soru",
+        examples=["how does authentication work"],
+    )
+    limit: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="LLM'e kac kod parcasi verilecek",
+    )
+
+
+class AskResponse(BaseModel):
+    """LLM cevabi ve dayandigi kaynaklar."""
+
+    owner: str
+    name: str
+    question: str
+    answer: str
+    model: str
+    retrieval_ms: float
+    generation_ms: float
+    sources: list[SearchHitOut]

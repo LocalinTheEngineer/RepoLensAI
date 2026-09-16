@@ -50,12 +50,21 @@ def get_model() -> SentenceTransformer:
             if _model is None:
                 try:
                     _model = SentenceTransformer(MODEL_NAME)
-                except Exception as error:  # indirme/yukleme hatalari
-                    raise RepositoryError(
-                        f"Embedding modeli yuklenemedi ({MODEL_NAME}). "
-                        "Ilk calistirmada model indirilir; internet baglantini kontrol et.",
-                        status_code=503,
-                    ) from error
+                except Exception as online_error:
+                    # Model onbellekte olsa bile sentence-transformers acilista
+                    # Hugging Face'e "guncelleme var mi" diye sorar. Internet
+                    # koparsa bu istek patlar. Onbellekteki kopyayla tekrar dene.
+                    try:
+                        _model = SentenceTransformer(
+                            MODEL_NAME, local_files_only=True
+                        )
+                    except Exception:
+                        raise RepositoryError(
+                            f"Embedding modeli yuklenemedi ({MODEL_NAME}). "
+                            "Model onbellekte de bulunamadi; ilk calistirmada "
+                            "indirilmesi icin internet baglantisi gerekir.",
+                            status_code=503,
+                        ) from online_error
 
     return _model
 
