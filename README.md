@@ -34,11 +34,17 @@ you know the exact identifier you want. The two result lists get merged by
 rank rather than by score, since a cosine similarity and a BM25 score are not
 on the same scale, so a chunk that both methods found rises to the top.
 
+What that produces is a wide pool of candidates, not an answer. A cross-encoder
+then reads the question and each candidate together, rather than as two
+separate vectors, and scores how well that code answers that question. The
+model ends up with five chunks that earned their place instead of twenty that
+happened to match.
+
 Every `file.py:12-40` reference the model writes is checked against the code
 it was actually shown, so a made-up line number gets flagged instead of
 quietly trusted.
 
-Step 13 of 25. Questions have to be in English.
+Step 14 of 25. Questions have to be in English.
 
 ## Running it
 
@@ -71,6 +77,7 @@ page just shows a connection error.
 ## Stack
 
 Python + FastAPI on the backend, React + TypeScript on Vite up front.
-Embeddings run locally with sentence-transformers (all-MiniLM-L6-v2, 384
-dimensions), vectors live in Qdrant, and Gemini writes the answers.
-Tree-sitter and Docker are in the plan but not in yet.
+Tree-sitter parses the code. Embeddings and reranking both run locally with
+sentence-transformers (all-MiniLM-L6-v2 for embeddings, ms-marco-MiniLM-L-6-v2
+for reranking), vectors live in Qdrant, and Gemini writes the answers. Docker
+is in the plan but not in yet.
