@@ -41,7 +41,7 @@ function App() {
   const [turns, setTurns] = useState<ChatTurn[]>([])
 
   const [query, setQuery] = useState('')
-  const [searchMode, setSearchMode] = useState<SearchMode>('semantic')
+  const [searchMode, setSearchMode] = useState<SearchMode>('hybrid')
   const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
 
   useEffect(() => {

@@ -84,10 +84,17 @@ export type SearchHit = {
   score: number
   symbol_name: string | null
   symbol_type: string | null
+
+  /** Yalnizca hybrid modda dolu: parcayi hangi yontem kacinci sirada buldu. */
+  vector_rank: number | null
+  keyword_rank: number | null
 }
 
-/** Arama modu: anlamsal (embedding) veya kelime tabanli (BM25). */
-export type SearchMode = 'semantic' | 'keyword'
+/**
+ * Arama modu: anlamsal (embedding), kelime tabanli (BM25) veya ikisinin
+ * sira bazli birlestirilmis hali (hybrid).
+ */
+export type SearchMode = 'semantic' | 'keyword' | 'hybrid'
 
 export type SearchResult = {
   owner: string

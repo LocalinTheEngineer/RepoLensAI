@@ -11,8 +11,12 @@ type Props = {
   ready: boolean
 }
 
-/** Iki arama modunun kisa aciklamasi. */
+/** Uc arama modunun kisa aciklamasi. */
 const MODE_INFO: Record<SearchMode, { label: string; hint: string }> = {
+  hybrid: {
+    label: 'Hybrid',
+    hint: 'Ikisini birden calistirir, siralamalari RRF ile birlestirir. Varsayilan.',
+  },
   semantic: {
     label: 'Anlamsal',
     hint: 'Kavram eslestirir. Kelimeler farkli olsa da benzer anlamli kodu bulur.',
@@ -23,8 +27,20 @@ const MODE_INFO: Record<SearchMode, { label: string; hint: string }> = {
   },
 }
 
+/** Skor rozetinin etiketi ve kac haneyle gosterilecegi moda gore degisir. */
+const SCORE_FORMAT: Record<SearchMode, { label: string; digits: number }> = {
+  hybrid: { label: 'RRF', digits: 4 },
+  semantic: { label: 'benzerlik', digits: 3 },
+  keyword: { label: 'BM25', digits: 2 },
+}
+
 /** Ornek sorgular; kullanici ne yazacagini bilmesin diye. */
 const EXAMPLES: Record<SearchMode, string[]> = {
+  hybrid: [
+    'how does authentication work',
+    'locate_app',
+    'where is SECRET_KEY_FALLBACKS used',
+  ],
   semantic: [
     'how does authentication work',
     'where is the database connected',
@@ -54,13 +70,13 @@ function SearchPanel({
     <section className="result scan">
       <h2>Kod arama</h2>
       <p className="note">
-        LLM devreye girmeden, ham arama sonuclarini gosterir. Iki farkli
+        LLM devreye girmeden, ham arama sonuclarini gosterir. Uc farkli
         yontem var; hangisinin ne buldugunu karsilastirabilirsin.
       </p>
-      {mode === 'semantic' && (
+      {mode !== 'keyword' && (
         <p className="note warning-note">
-          Anlamsal arama yalnizca Ingilizce icin egitilmis bir model kullanir;
-          sorgularini Ingilizce yaz.
+          Anlamsal arama (hybrid dahil) yalnizca Ingilizce icin egitilmis bir
+          model kullanir; sorgularini Ingilizce yaz.
         </p>
       )}
 
@@ -148,10 +164,21 @@ function SearchPanel({
                     </code>
                   </span>
                   <span className="score-badge">
-                    {state.data.mode === 'keyword' ? 'BM25' : 'benzerlik'}{' '}
-                    {hit.score.toFixed(state.data.mode === 'keyword' ? 2 : 3)}
+                    {SCORE_FORMAT[state.data.mode].label}{' '}
+                    {hit.score.toFixed(SCORE_FORMAT[state.data.mode].digits)}
                   </span>
                 </header>
+                {state.data.mode === 'hybrid' && (
+                  <p className="note">
+                    {hit.vector_rank === null
+                      ? 'anlamsal: bulamadi'
+                      : 'anlamsal #' + hit.vector_rank}
+                    {' '}&middot;{' '}
+                    {hit.keyword_rank === null
+                      ? 'kelime: bulamadi'
+                      : 'kelime #' + hit.keyword_rank}
+                  </p>
+                )}
                 <pre className="chunk-preview">{hit.content}</pre>
               </article>
             ))}
