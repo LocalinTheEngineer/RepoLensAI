@@ -29,14 +29,16 @@ one up.
 
 Chunks follow function and class boundaries rather than arbitrary line counts,
 so a retrieved excerpt is a whole unit of code with a name attached. Search
-runs two ways — by meaning, and by keyword with BM25 for when you know the
-exact identifier you want.
+runs both ways at once — by meaning, and by keyword with BM25 for when
+you know the exact identifier you want. The two result lists get merged by
+rank rather than by score, since a cosine similarity and a BM25 score are not
+on the same scale, so a chunk that both methods found rises to the top.
 
 Every `file.py:12-40` reference the model writes is checked against the code
 it was actually shown, so a made-up line number gets flagged instead of
 quietly trusted.
 
-Step 12 of 25. Questions have to be in English.
+Step 13 of 25. Questions have to be in English.
 
 ## Running it
 
