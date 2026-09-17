@@ -183,3 +183,21 @@ def count_by_extension(files: list[ScannedFile]) -> dict[str, int]:
     for item in files:
         counts[item.extension] = counts.get(item.extension, 0) + 1
     return dict(sorted(counts.items(), key=lambda pair: (-pair[1], pair[0])))
+
+
+def count_by_top_level_dir(files: list[ScannedFile]) -> dict[str, int]:
+    """Dosyalarin ana klasore gore dagilimi (coktan aza sirali).
+
+    Kok dizindeki dosyalar (orn. README.md) "(kok)" altinda toplanir.
+    """
+    counts: dict[str, int] = {}
+    for item in files:
+        slash = item.path.find("/")
+        directory = "(kok)" if slash == -1 else item.path[:slash]
+        counts[directory] = counts.get(directory, 0) + 1
+    return dict(sorted(counts.items(), key=lambda pair: (-pair[1], pair[0])))
+
+
+def largest_files(files: list[ScannedFile], limit: int = 5) -> list[ScannedFile]:
+    """Satir sayisina gore en buyuk N dosya."""
+    return sorted(files, key=lambda item: item.lines, reverse=True)[:limit]

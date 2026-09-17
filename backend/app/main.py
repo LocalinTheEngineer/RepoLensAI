@@ -46,10 +46,13 @@ from app.services.chunker import (
     CHUNK_OVERLAP_LINES,
     CHUNK_SIZE_LINES,
     MAX_CHUNKS_IN_RESPONSE,
+    count_symbols,
 )
 from app.services.file_scanner import (
     MAX_FILES_IN_RESPONSE,
     count_by_extension,
+    count_by_top_level_dir,
+    largest_files,
     scan_repository,
 )
 from app.services.answerer import generate_answer
@@ -159,6 +162,16 @@ def list_repository_files(owner: str, name: str) -> FileScanResponse:
             for item in shown
         ],
         truncated=len(result.selected) > len(shown),
+        top_level_dirs=count_by_top_level_dir(result.selected),
+        largest_files=[
+            RepositoryFile(
+                path=item.path,
+                extension=item.extension,
+                size_bytes=item.size_bytes,
+                lines=item.lines,
+            )
+            for item in largest_files(result.selected)
+        ],
     )
 
 
@@ -206,6 +219,7 @@ def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
             for chunk in shown
         ],
         truncated=chunk_count > len(shown),
+        symbol_counts=count_symbols(result.chunks),
     )
 
 

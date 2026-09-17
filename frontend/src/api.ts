@@ -38,6 +38,8 @@ export type FileScan = {
   total_lines: number
   files: RepositoryFile[]
   truncated: boolean
+  top_level_dirs: Record<string, number>
+  largest_files: RepositoryFile[]
 }
 
 export type ChunkSummary = {
@@ -62,6 +64,7 @@ export type ChunkScan = {
   chunk_overlap_lines: number
   chunks: ChunkSummary[]
   truncated: boolean
+  symbol_counts: Record<string, number>
 }
 
 export type IndexResult = {

@@ -68,6 +68,19 @@ class ChunkingResult:
     chunks: list[Chunk] = field(default_factory=list)
 
 
+def count_symbols(chunks: list[Chunk]) -> dict[str, int]:
+    """Sembol turune (function, class, method ...) gore dagilim, coktan aza sirali.
+
+    Satir tabanli parcalarda symbol_type None'dur, onlar sayilmaz.
+    """
+    counts: dict[str, int] = {}
+    for chunk in chunks:
+        if chunk.symbol_type is None:
+            continue
+        counts[chunk.symbol_type] = counts.get(chunk.symbol_type, 0) + 1
+    return dict(sorted(counts.items(), key=lambda pair: (-pair[1], pair[0])))
+
+
 def chunk_text(file_path: str, text: str) -> list[Chunk]:
     """Tek bir dosyanin metnini sabit boyutlu parcalara ayirir.
 

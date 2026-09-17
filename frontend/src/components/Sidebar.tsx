@@ -143,6 +143,44 @@ function Sidebar({
         </section>
       )}
 
+      {scan.kind === 'ok' && chunks.kind === 'ok' && (
+        <section className="sidebar-block">
+          <h3 className="sidebar-title">Yapi</h3>
+
+          <ul className="pill-list">
+            {Object.entries(scan.data.top_level_dirs).map(([dir, count]) => (
+              <li key={dir} className="pill">
+                <code>{dir}/</code> {count}
+              </li>
+            ))}
+          </ul>
+
+          {Object.keys(chunks.data.symbol_counts).length > 0 && (
+            <ul className="pill-list">
+              {Object.entries(chunks.data.symbol_counts).map(
+                ([type, count]) => (
+                  <li key={type} className="pill">
+                    {type} {count}
+                  </li>
+                ),
+              )}
+            </ul>
+          )}
+
+          <details className="skipped">
+            <summary>En buyuk dosyalar</summary>
+            <div className="file-list">
+              {scan.data.largest_files.map((file) => (
+                <div key={file.path} className="file-row">
+                  <code className="file-path">{file.path}</code>
+                  <span className="file-lines">{file.lines}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        </section>
+      )}
+
       {chunks.kind === 'ok' && (
         <section className="sidebar-block">
           <h3 className="sidebar-title">Indeksleme</h3>

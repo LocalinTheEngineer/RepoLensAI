@@ -50,6 +50,11 @@ class FileScanResponse(BaseModel):
     files: list[RepositoryFile]
     truncated: bool
 
+    # Bunlar TUM secilen dosyalar uzerinden hesaplanir, `files` listesi
+    # (MAX_FILES_IN_RESPONSE ile) kirpilmis olsa bile eksiksizdir.
+    top_level_dirs: dict[str, int]
+    largest_files: list[RepositoryFile]
+
 
 class ChunkSummary(BaseModel):
     """Tek bir kod parcasinin ozeti (icerik yerine onizleme tasir)."""
@@ -77,6 +82,10 @@ class ChunkResponse(BaseModel):
     chunk_overlap_lines: int
     chunks: list[ChunkSummary]
     truncated: bool
+
+    # TUM parcalar uzerinden hesaplanir, `chunks` listesi (MAX_CHUNKS_IN_RESPONSE
+    # ile) kirpilmis olsa bile eksiksizdir.
+    symbol_counts: dict[str, int]
 
 
 class EmbedQueryRequest(BaseModel):

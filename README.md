@@ -58,7 +58,12 @@ GraphQL, an ORM, OAuth2 — run through the real retrieval and the real model.
 All 18 came back saying the evidence wasn't there instead of inventing an
 answer.
 
-Step 16 of 25. Questions have to be in English.
+Before asking anything, the sidebar already shows what got indexed: which
+top-level directories the files came from, how many functions and classes
+Tree-sitter found, and which files are the largest. Those counts run over
+every file and every chunk, not just the slice the UI happens to list.
+
+Step 17 of 25. Questions have to be in English.
 
 ## Running it
 
