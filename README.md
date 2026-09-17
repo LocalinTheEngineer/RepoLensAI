@@ -40,11 +40,19 @@ separate vectors, and scores how well that code answers that question. The
 model ends up with five chunks that earned their place instead of twenty that
 happened to match.
 
+None of this is taken on faith. `backend/eval/` holds 71 questions about a real
+repository, each labelled with the files that actually answer it, and a script
+that replays them across every retrieval variant. Searching both ways lifts
+Recall@1 from 68 to 73 percent and Recall@3 from 90 to 99, and costs two
+milliseconds. The cross-encoder adds three more points and costs about a second
+per question, and it is not a clean win: it fixes some categories outright and
+makes others worse.
+
 Every `file.py:12-40` reference the model writes is checked against the code
 it was actually shown, so a made-up line number gets flagged instead of
 quietly trusted.
 
-Step 14 of 25. Questions have to be in English.
+Step 15 of 25. Questions have to be in English.
 
 ## Running it
 
