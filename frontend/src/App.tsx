@@ -42,6 +42,7 @@ function App() {
 
   const [query, setQuery] = useState('')
   const [searchMode, setSearchMode] = useState<SearchMode>('hybrid')
+  const [rerank, setRerank] = useState(false)
   const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
 
   useEffect(() => {
@@ -172,7 +173,7 @@ function App() {
         kind: 'ok',
         data: await fetchJson<SearchResult>(
           `/repositories/${owner}/${name}/search`,
-          postJson({ query, limit: 5, mode: searchMode }),
+          postJson({ query, limit: 5, mode: searchMode, rerank }),
         ),
       })
     } catch (error) {
@@ -239,6 +240,8 @@ function App() {
               onQueryChange={setQuery}
               mode={searchMode}
               onModeChange={setSearchMode}
+              rerank={rerank}
+              onRerankChange={setRerank}
               onSubmit={handleSearch}
               ready={indexed}
             />

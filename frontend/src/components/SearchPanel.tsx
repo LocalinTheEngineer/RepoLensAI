@@ -6,6 +6,9 @@ type Props = {
   onQueryChange: (value: string) => void
   mode: SearchMode
   onModeChange: (mode: SearchMode) => void
+  /** Reranker acik mi: adaylar cross-encoder ile yeniden siralansin mi. */
+  rerank: boolean
+  onRerankChange: (rerank: boolean) => void
   onSubmit: () => void
   /** Repository indekslenmeden arama yapilamaz. */
   ready: boolean
@@ -56,6 +59,8 @@ function SearchPanel({
   onQueryChange,
   mode,
   onModeChange,
+  rerank,
+  onRerankChange,
   onSubmit,
   ready,
 }: Props) {
@@ -93,6 +98,16 @@ function SearchPanel({
         ))}
       </div>
       <p className="note">{MODE_INFO[mode].hint}</p>
+
+      <label className="note rerank-toggle">
+        <input
+          type="checkbox"
+          checked={rerank}
+          onChange={(event) => onRerankChange(event.target.checked)}
+        />{' '}
+        Reranker: once 20 aday cek, cross-encoder ile yeniden sirala, en iyi
+        5-ini goster. Daha isabetli ama daha yavas.
+      </label>
 
       <form className="repo-form" onSubmit={handleSubmit}>
         <div className="repo-row">
@@ -147,6 +162,9 @@ function SearchPanel({
         <>
           <p className="note">
             {state.data.hits.length} sonuc &middot; {state.data.duration_ms} ms
+            {state.data.rerank_ms !== null && (
+              <> &middot; bunun {state.data.rerank_ms} ms-si reranker</>
+            )}
           </p>
           <div className="chunk-list chunk-list--open">
             {state.data.hits.map((hit) => (
@@ -167,6 +185,11 @@ function SearchPanel({
                     {SCORE_FORMAT[state.data.mode].label}{' '}
                     {hit.score.toFixed(SCORE_FORMAT[state.data.mode].digits)}
                   </span>
+                  {hit.rerank_score !== null && (
+                    <span className="score-badge">
+                      reranker {hit.rerank_score.toFixed(2)}
+                    </span>
+                  )}
                 </header>
                 {state.data.mode === 'hybrid' && (
                   <p className="note">

@@ -88,6 +88,9 @@ export type SearchHit = {
   /** Yalnizca hybrid modda dolu: parcayi hangi yontem kacinci sirada buldu. */
   vector_rank: number | null
   keyword_rank: number | null
+
+  /** Yalnizca rerank istendiginde dolu: cross-encoder puani. */
+  rerank_score: number | null
 }
 
 /**
@@ -102,6 +105,10 @@ export type SearchResult = {
   query: string
   mode: SearchMode
   duration_ms: number
+
+  /** Rerank asamasinin suresi; rerank istenmediyse null. */
+  rerank_ms: number | null
+
   hits: SearchHit[]
 }
 
@@ -127,6 +134,7 @@ export type AskResult = {
   answer: string
   model: string
   retrieval_ms: number
+  rerank_ms: number
   generation_ms: number
   sources: SearchHit[]
   citations: Citation[]
