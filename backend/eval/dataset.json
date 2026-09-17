@@ -1,0 +1,95 @@
+{
+  "repository": {
+    "owner": "pallets",
+    "name": "flask",
+    "url": "https://github.com/pallets/flask",
+    "note": "Etiketler bu reponun main dalina gore elle dogrulandi. Repo buyuk bir yeniden duzenleme yaparsa etiketler gozden gecirilmeli."
+  },
+  "questions": [
+    {"id": "route-01", "category": "routing", "question": "how does the route decorator register a view function", "expected_files": ["src/flask/sansio/scaffold.py"]},
+    {"id": "route-02", "category": "routing", "question": "where is add_url_rule implemented for the application", "expected_files": ["src/flask/sansio/app.py", "src/flask/sansio/scaffold.py"]},
+    {"id": "route-03", "category": "routing", "question": "how does the framework build a url for an endpoint", "expected_files": ["src/flask/app.py", "src/flask/helpers.py"]},
+    {"id": "route-04", "category": "routing", "question": "how are the get post put and delete shortcut decorators defined", "expected_files": ["src/flask/sansio/scaffold.py"]},
+    {"id": "route-05", "category": "routing", "question": "how is the url adapter created for matching an incoming request", "expected_files": ["src/flask/app.py"]},
+    {"id": "route-06", "category": "routing", "question": "what happens when no url rule matches the request", "expected_files": ["src/flask/app.py"]},
+    {"id": "route-07", "category": "routing", "question": "how is the endpoint name derived from a view function", "expected_files": ["src/flask/sansio/scaffold.py"]},
+    {"id": "route-08", "category": "routing", "question": "how are url defaults injected when building a url", "expected_files": ["src/flask/sansio/app.py"]},
+
+    {"id": "conf-01", "category": "config", "question": "how do I load configuration from environment variables with a prefix", "expected_files": ["src/flask/config.py"]},
+    {"id": "conf-02", "category": "config", "question": "how does loading configuration from a python file work", "expected_files": ["src/flask/config.py"]},
+    {"id": "conf-03", "category": "config", "question": "how can config values be loaded from a json or toml file", "expected_files": ["src/flask/config.py"]},
+    {"id": "conf-04", "category": "config", "question": "how does the app find its instance folder path", "expected_files": ["src/flask/sansio/app.py"]},
+    {"id": "conf-05", "category": "config", "question": "how are config keys grouped into a namespace dictionary", "expected_files": ["src/flask/config.py"]},
+    {"id": "conf-06", "category": "config", "question": "where is the config object created for the application", "expected_files": ["src/flask/sansio/app.py"]},
+    {"id": "conf-07", "category": "config", "question": "how does config from_object read settings from a class or module", "expected_files": ["src/flask/config.py"]},
+
+    {"id": "sess-01", "category": "sessions", "question": "how is the session cookie signed and serialized", "expected_files": ["src/flask/sessions.py"]},
+    {"id": "sess-02", "category": "sessions", "question": "how does the app decide the session cookie domain", "expected_files": ["src/flask/sessions.py"]},
+    {"id": "sess-03", "category": "sessions", "question": "when does the framework decide to set the session cookie on a response", "expected_files": ["src/flask/sessions.py"]},
+    {"id": "sess-04", "category": "sessions", "question": "how is a session opened from the incoming request cookies", "expected_files": ["src/flask/sessions.py"]},
+    {"id": "sess-05", "category": "sessions", "question": "what happens when no secret key is configured for sessions", "expected_files": ["src/flask/sessions.py"]},
+    {"id": "sess-06", "category": "sessions", "question": "how is the session expiration time computed", "expected_files": ["src/flask/sessions.py"]},
+
+    {"id": "cli-01", "category": "cli", "question": "how does the command line interface locate the application object", "expected_files": ["src/flask/cli.py"]},
+    {"id": "cli-02", "category": "cli", "question": "how are environment variables loaded from a dotenv file", "expected_files": ["src/flask/cli.py"]},
+    {"id": "cli-03", "category": "cli", "question": "how does a cli command run inside an application context", "expected_files": ["src/flask/cli.py"]},
+    {"id": "cli-04", "category": "cli", "question": "how are plugin commands discovered from entry points", "expected_files": ["src/flask/cli.py"]},
+    {"id": "cli-05", "category": "cli", "question": "how is the module path prepared before importing the app", "expected_files": ["src/flask/cli.py"]},
+    {"id": "cli-06", "category": "cli", "question": "how does the shell command build the variables it exposes", "expected_files": ["src/flask/app.py", "src/flask/cli.py"]},
+    {"id": "cli-07", "category": "cli", "question": "locate_app", "expected_files": ["src/flask/cli.py"]},
+
+    {"id": "tmpl-01", "category": "templating", "question": "how is the jinja environment created for the application", "expected_files": ["src/flask/app.py", "src/flask/sansio/app.py"]},
+    {"id": "tmpl-02", "category": "templating", "question": "how does the template loader search blueprints for a template", "expected_files": ["src/flask/templating.py"]},
+    {"id": "tmpl-03", "category": "templating", "question": "how is render_template implemented", "expected_files": ["src/flask/templating.py"]},
+    {"id": "tmpl-04", "category": "templating", "question": "how can a template be streamed instead of rendered all at once", "expected_files": ["src/flask/templating.py"]},
+    {"id": "tmpl-05", "category": "templating", "question": "how is autoescaping decided based on the file extension", "expected_files": ["src/flask/sansio/app.py"]},
+    {"id": "tmpl-06", "category": "templating", "question": "how do context processors add variables to every template", "expected_files": ["src/flask/app.py", "src/flask/templating.py"]},
+
+    {"id": "life-01", "category": "request-lifecycle", "question": "what is the full request dispatch flow from start to response", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-02", "category": "request-lifecycle", "question": "how are before request functions executed", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-03", "category": "request-lifecycle", "question": "how are after request functions applied to the response", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-04", "category": "request-lifecycle", "question": "how does teardown run after a request finishes", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-05", "category": "request-lifecycle", "question": "where is the wsgi entry point of the application", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-06", "category": "request-lifecycle", "question": "how is a view return value converted into a response object", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-07", "category": "request-lifecycle", "question": "how are async view functions supported", "expected_files": ["src/flask/app.py"]},
+    {"id": "life-08", "category": "request-lifecycle", "question": "how is the options response built automatically", "expected_files": ["src/flask/app.py"]},
+
+    {"id": "err-01", "category": "errors", "question": "how are http exceptions turned into responses", "expected_files": ["src/flask/app.py"]},
+    {"id": "err-02", "category": "errors", "question": "how does the app find the right handler for a raised exception", "expected_files": ["src/flask/sansio/app.py"]},
+    {"id": "err-03", "category": "errors", "question": "how is an unhandled exception logged", "expected_files": ["src/flask/app.py"]},
+    {"id": "err-04", "category": "errors", "question": "how do I register a custom error handler for a status code", "expected_files": ["src/flask/sansio/scaffold.py"]},
+    {"id": "err-05", "category": "errors", "question": "what happens on an unexpected error when debug mode is on", "expected_files": ["src/flask/app.py"]},
+    {"id": "err-06", "category": "errors", "question": "how does abort raise an http error", "expected_files": ["src/flask/helpers.py"]},
+
+    {"id": "json-01", "category": "json", "question": "how is jsonify implemented", "expected_files": ["src/flask/json/__init__.py", "src/flask/json/provider.py"]},
+    {"id": "json-02", "category": "json", "question": "how does the default json provider serialize dates and uuids", "expected_files": ["src/flask/json/provider.py"]},
+    {"id": "json-03", "category": "json", "question": "how are python types tagged so they survive a json round trip", "expected_files": ["src/flask/json/tag.py"]},
+    {"id": "json-04", "category": "json", "question": "how can I replace the json encoder used by the application", "expected_files": ["src/flask/json/provider.py"]},
+
+    {"id": "stat-01", "category": "static-files", "question": "how is a static file sent to the client", "expected_files": ["src/flask/app.py", "src/flask/helpers.py"]},
+    {"id": "stat-02", "category": "static-files", "question": "how is the cache max age decided for a sent file", "expected_files": ["src/flask/app.py", "src/flask/helpers.py"]},
+    {"id": "stat-03", "category": "static-files", "question": "how does sending a file from a directory avoid path traversal", "expected_files": ["src/flask/helpers.py"]},
+
+    {"id": "blue-01", "category": "blueprints", "question": "how is a blueprint registered on the application", "expected_files": ["src/flask/sansio/app.py", "src/flask/sansio/blueprints.py"]},
+    {"id": "blue-02", "category": "blueprints", "question": "how do nested blueprints get their names and url prefixes", "expected_files": ["src/flask/sansio/blueprints.py"]},
+    {"id": "blue-03", "category": "blueprints", "question": "how are blueprint setup functions deferred until registration", "expected_files": ["src/flask/sansio/blueprints.py"]},
+
+    {"id": "view-01", "category": "views", "question": "how is a class based view turned into a view function", "expected_files": ["src/flask/views.py"]},
+    {"id": "view-02", "category": "views", "question": "how does a method view dispatch based on the http method", "expected_files": ["src/flask/views.py"]},
+
+    {"id": "ctx-01", "category": "context", "question": "how is the application context pushed and popped", "expected_files": ["src/flask/ctx.py"]},
+    {"id": "ctx-02", "category": "context", "question": "how can I check whether there is an active request context", "expected_files": ["src/flask/ctx.py"]},
+    {"id": "ctx-03", "category": "context", "question": "how do the request and session proxy objects work", "expected_files": ["src/flask/globals.py"]},
+    {"id": "ctx-04", "category": "context", "question": "how do I run a function later with the current request context copied", "expected_files": ["src/flask/ctx.py"]},
+
+    {"id": "log-01", "category": "logging", "question": "how is the application logger created and configured", "expected_files": ["src/flask/logging.py"]},
+
+    {"id": "test-01", "category": "testing", "question": "how does the test client keep cookies between requests", "expected_files": ["src/flask/testing.py"]},
+    {"id": "test-02", "category": "testing", "question": "how can I modify the session inside a test", "expected_files": ["src/flask/testing.py"]},
+
+    {"id": "misc-01", "category": "misc", "question": "how are flash messages stored and read back", "expected_files": ["src/flask/helpers.py"]},
+    {"id": "misc-02", "category": "misc", "question": "how does streaming keep the request context alive while generating", "expected_files": ["src/flask/helpers.py"]},
+    {"id": "misc-03", "category": "misc", "question": "how is the debug flag read from the environment", "expected_files": ["src/flask/helpers.py"]},
+    {"id": "misc-04", "category": "misc", "question": "how does the development server get started", "expected_files": ["src/flask/app.py", "src/flask/cli.py"]}
+  ]
+}
