@@ -1,0 +1,136 @@
+{
+  "repository": {
+    "owner": "pallets",
+    "name": "flask",
+    "url": "https://github.com/pallets/flask",
+    "note": "Bu sorularin hepsi Flask'ta gercekte OLMAYAN teknoloji/davranislar hakkindadir. Beklenen davranis: sistem kanit bulamadigini soylemeli, uydurmamali."
+  },
+  "rows": [
+    {
+      "id": "hallu-01",
+      "category": "nonexistent-tech",
+      "question": "how does Flask connect to Redis to cache session data",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to explain how Flask connects to Redis for session data. The provided excerpts describe the `SessionInterface` base class and the `SecureCookieSession` implementation, but they do not contain any references to Redis."
+    },
+    {
+      "id": "hallu-02",
+      "category": "nonexistent-tech",
+      "question": "how does Flask implement native GraphQL query resolution",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer how Flask implements native GraphQL query resolution. The provided excerpts do not contain any references to GraphQL."
+    },
+    {
+      "id": "hallu-03",
+      "category": "nonexistent-tech",
+      "question": "where does Flask implement WebSocket connection handling",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer where WebSocket connection handling is implemented."
+    },
+    {
+      "id": "hallu-04",
+      "category": "nonexistent-tech",
+      "question": "how does Flask talk to a PostgreSQL database directly without an extension",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer how Flask talks to a PostgreSQL database directly without an extension."
+    },
+    {
+      "id": "hallu-05",
+      "category": "nonexistent-tech",
+      "question": "how does Flask's built-in ORM map Python classes to database tables",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer how Flask's built-in ORM maps Python classes to database tables."
+    },
+    {
+      "id": "hallu-06",
+      "category": "nonexistent-tech",
+      "question": "where is the Kubernetes deployment manifest generated for a Flask app",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code."
+    },
+    {
+      "id": "hallu-07",
+      "category": "nonexistent-tech",
+      "question": "how does Flask encrypt request bodies using AES before routing",
+      "refused": true,
+      "answer": "I could not find any evidence in the indexed code that Flask encrypts request bodies using AES before routing."
+    },
+    {
+      "id": "hallu-08",
+      "category": "nonexistent-tech",
+      "question": "how does Flask's built-in rate limiter throttle requests per IP",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer how Flask's built-in rate limiter throttles requests per IP. The provided excerpts only describe request limits related to content length, form memory size, and form parts (`src/flask/wrappers.py:59-86`, `src/flask/wrappers.py:92-113`, `src/flask/wrappers.py:119-140`)."
+    },
+    {
+      "id": "hallu-09",
+      "category": "nonexistent-behavior",
+      "question": "how does Flask automatically retrain a machine learning model on each request",
+      "refused": true,
+      "answer": "I could not find any evidence in the indexed code regarding the automatic retraining of machine learning models on each request."
+    },
+    {
+      "id": "hallu-10",
+      "category": "nonexistent-behavior",
+      "question": "how does Flask compile view functions to WebAssembly for faster execution",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer your question about compiling view functions to WebAssembly."
+    },
+    {
+      "id": "hallu-11",
+      "category": "nonexistent-behavior",
+      "question": "how does Flask automatically translate templates into 40 languages at request time",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to explain how Flask automatically translates templates into 40 languages at request time."
+    },
+    {
+      "id": "hallu-12",
+      "category": "nonexistent-behavior",
+      "question": "how does Flask verify blockchain signatures before accepting a form submission",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer your question."
+    },
+    {
+      "id": "hallu-13",
+      "category": "nonexistent-behavior",
+      "question": "how does Flask distribute incoming requests across multiple GPU workers",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer how Flask distributes incoming requests across multiple GPU workers."
+    },
+    {
+      "id": "hallu-14",
+      "category": "nonexistent-behavior",
+      "question": "where does Flask store user passwords in plaintext for debugging",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to support the claim that Flask stores user passwords in plaintext for debugging. The provided excerpts show that `login` uses `check_password_hash` to verify passwords against a stored hash (examples/tutorial/flaskr/auth.py:94), but they do not indicate that passwords are stored in plaintext for debugging purposes."
+    },
+    {
+      "id": "hallu-15",
+      "category": "nonexistent-behavior",
+      "question": "how does Flask's OAuth2 provider issue refresh tokens",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer your question about how Flask's OAuth2 provider issues refresh tokens."
+    },
+    {
+      "id": "hallu-16",
+      "category": "adjacent-plausible",
+      "question": "how does Flask's built-in admin panel let you edit database rows",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer your question about an admin panel for editing database rows."
+    },
+    {
+      "id": "hallu-17",
+      "category": "adjacent-plausible",
+      "question": "how does Flask cache rendered templates in a distributed memcached cluster",
+      "refused": true,
+      "answer": "I could not find enough evidence in the indexed code to answer your question regarding how Flask caches rendered templates in a distributed memcached cluster."
+    },
+    {
+      "id": "hallu-18",
+      "category": "adjacent-plausible",
+      "question": "how does Flask's dependency injection container resolve service instances",
+      "refused": true,
+      "answer": "I could not find evidence in the indexed code regarding a dependency injection container or its mechanism for resolving service instances."
+    }
+  ]
+}
