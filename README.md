@@ -52,7 +52,13 @@ Every `file.py:12-40` reference the model writes is checked against the code
 it was actually shown, so a made-up line number gets flagged instead of
 quietly trusted.
 
-Step 15 of 25. Questions have to be in English.
+That flagging is tested directly, not assumed: `backend/eval/` also holds 18
+questions about things the indexed repository does not actually have — Redis,
+GraphQL, an ORM, OAuth2 — run through the real retrieval and the real model.
+All 18 came back saying the evidence wasn't there instead of inventing an
+answer.
+
+Step 16 of 25. Questions have to be in English.
 
 ## Running it
 
