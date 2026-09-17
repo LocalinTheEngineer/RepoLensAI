@@ -144,6 +144,40 @@ def describe_clone_failure(stderr: str) -> tuple[str, int]:
     return ("Repository indirilemedi. Adresi kontrol edip tekrar dene.", 502)
 
 
+def pull_latest(path: Path) -> str:
+    """Var olan bir klonu GitHub'daki en son commit'e gunceller.
+
+    --depth 1 ile klonlandigi icin gecmis yok; fetch ucu ileri tasir, reset
+    calisma agacini ona esitler. Repo yalnizca okunuyor (kullanici burada
+    hicbir zaman degisiklik yapmaz), o yuzden reset --hard veri kaybettirmez.
+    """
+    fetch = subprocess.run(
+        ["git", "-C", str(path), "fetch", "--depth", "1", "origin"],
+        capture_output=True,
+        text=True,
+        timeout=CLONE_TIMEOUT_SECONDS,
+        check=False,
+    )
+    if fetch.returncode != 0:
+        raise RepositoryError(
+            "Repository guncellenemedi (fetch basarisiz).", status_code=502
+        )
+
+    reset = subprocess.run(
+        ["git", "-C", str(path), "reset", "--hard", "FETCH_HEAD"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if reset.returncode != 0:
+        raise RepositoryError(
+            "Repository guncellenemedi (reset basarisiz).", status_code=502
+        )
+
+    return read_head_commit(path)
+
+
 def read_head_commit(path: Path) -> str:
     """Indirilen repository'nin en son commit hash'ini okur."""
     result = subprocess.run(

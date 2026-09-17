@@ -166,6 +166,28 @@ class DependencyGraphResponse(BaseModel):
     edges: list[DependencyEdge]
 
 
+class ReindexResponse(BaseModel):
+    """POST /repositories/{owner}/{name}/reindex cevabi.
+
+    `previous_commit` None ise bu ilk indeksleme demektir (tum dosyalar
+    `added` altindadir). Aksi halde yalnizca `added` + `modified` yeniden
+    parcalanip embed edilmistir; `deleted` dosyalarin eski parcalari
+    veritabanindan silinmistir.
+    """
+
+    owner: str
+    name: str
+    previous_commit: str | None
+    commit: str
+    added: list[str]
+    modified: list[str]
+    deleted: list[str]
+    unchanged_count: int
+    chunk_count: int
+    embed_duration_ms: float
+    store_duration_ms: float
+
+
 class SearchRequest(BaseModel):
     """POST /repositories/{owner}/{name}/search istegiyle gonderilen govde."""
 

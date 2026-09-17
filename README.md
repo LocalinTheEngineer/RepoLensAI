@@ -69,7 +69,12 @@ drawn with Cytoscape.js. Python imports are resolved with the standard
 external packages (flask, react, ...) never show up, since they don't
 correspond to a file in the repo.
 
-Step 18 of 25. Questions have to be in English.
+Re-indexing after a commit doesn't start over. It pulls the latest commit,
+hashes every file's content, and only re-embeds what actually changed;
+a deleted file's old chunks are removed from Qdrant instead of lingering.
+If nothing changed, it says so and does no embedding work at all.
+
+Step 19 of 25. Questions have to be in English.
 
 ## Running it
 

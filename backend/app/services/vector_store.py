@@ -21,8 +21,10 @@ from pathlib import Path
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
+    FieldCondition,
     Filter,
     FilterSelector,
+    MatchValue,
     PointStruct,
     VectorParams,
 )
@@ -121,13 +123,12 @@ def point_id(chunk_id: str) -> str:
 def ensure_collection(ref: RepositoryRef, reset: bool = False) -> str:
     """Repository icin koleksiyonu olusturur.
 
-    reset=True ise once mevcut koleksiyonu siler. Indeksleme her zaman
-    reponun TAMAMINI isledigi icin bu dogru davranistir: parcalama yontemi
-    degistiginde (orn. satir tabanlidan AST'ye gecis) eski parcalar farkli
-    chunk_id tasir ve silinmezse veritabaninda oluru kalirdi.
-
-    Adim 19'da (incremental indexing) yalnizca degisen dosyalari guncelleyen
-    bir yol eklenecek; o zaman bu sifirlama secenege baglanacak.
+    reset=True ise once mevcut koleksiyonu siler. `store_chunks` (tam
+    reindex) bunu ister: parcalama yontemi degistiginde (orn. satir
+    tabanlidan AST'ye gecis) eski parcalar farkli chunk_id tasir ve
+    silinmezse veritabaninda oluru kalirdi. `upsert_chunks` (Adim 19,
+    incremental indexing) reset ISTEMEZ - mevcut koleksiyona dokunmadan
+    ekler, silinmesi gereken parcalar cagiran tarafta ayrica silinir.
 
     DIKKAT: Qdrant yerel modunda `delete_collection()` yeterli DEGILDIR.
     Koleksiyonu kayittan dusuruyor (`collection_exists` False donuyor) ama
@@ -157,45 +158,54 @@ def ensure_collection(ref: RepositoryRef, reset: bool = False) -> str:
     return name
 
 
-def store_chunks(
-    ref: RepositoryRef, chunks: list[Chunk], vectors: list[list[float]]
-) -> int:
-    """Parcalari ve vektorlerini veritabanina yazar.
+def _point_for(chunk: Chunk, vector: list[float]) -> PointStruct:
+    """Bir parcayi Qdrant'in kayit formatina cevirir.
 
     Metadata olarak file_path, start_line, end_line ve content saklanir;
     arama sonucunda kaynak gosterebilmemiz bunlara bagli.
     """
+    return PointStruct(
+        id=point_id(chunk.chunk_id),
+        vector=vector,
+        payload={
+            "chunk_id": chunk.chunk_id,
+            "file_path": chunk.file_path,
+            "start_line": chunk.start_line,
+            "end_line": chunk.end_line,
+            "content": chunk.content,
+            "symbol_name": chunk.symbol_name,
+            "symbol_type": chunk.symbol_type,
+        },
+    )
+
+
+def _upsert(client: QdrantClient, name: str, chunks: list[Chunk], vectors: list[list[float]]) -> int:
     if len(chunks) != len(vectors):
         raise RepositoryError(
             "Parca sayisi ile vektor sayisi ayni olmali.", status_code=500
         )
 
-    client = get_client()
-    # Tam yeniden indeksleme: eski parcalar kalmasin.
-    name = ensure_collection(ref, reset=True)
-
-    points = [
-        PointStruct(
-            id=point_id(chunk.chunk_id),
-            vector=vector,
-            payload={
-                "chunk_id": chunk.chunk_id,
-                "file_path": chunk.file_path,
-                "start_line": chunk.start_line,
-                "end_line": chunk.end_line,
-                "content": chunk.content,
-                "symbol_name": chunk.symbol_name,
-                "symbol_type": chunk.symbol_type,
-            },
-        )
-        for chunk, vector in zip(chunks, vectors)
-    ]
-
+    points = [_point_for(chunk, vector) for chunk, vector in zip(chunks, vectors)]
     for start in range(0, len(points), UPSERT_BATCH_SIZE):
         client.upsert(
             collection_name=name,
             points=points[start : start + UPSERT_BATCH_SIZE],
         )
+    return len(points)
+
+
+def store_chunks(
+    ref: RepositoryRef, chunks: list[Chunk], vectors: list[list[float]]
+) -> int:
+    """Reponun TAMAMINI yazar: once koleksiyonu sifirlar, sonra hepsini upsert eder.
+
+    Adim 19'dan once tek indeksleme yolu buydu; hala full reindex icin ve
+    Adim 15/16'nin eval betikleri icin kullaniliyor (sonuclarin sabit
+    kalmasi icin degisen bir "incremental" davranisa BAGIMLI degiller).
+    """
+    client = get_client()
+    name = ensure_collection(ref, reset=True)
+    count = _upsert(client, name, chunks, vectors)
 
     # Kelime tabanli indeks bu parcalardan kuruluyordu; artik eskidi.
     # Dairesel import olmasin diye burada, fonksiyon icinde import ediyoruz.
@@ -203,7 +213,50 @@ def store_chunks(
 
     invalidate(ref)
 
-    return len(points)
+    return count
+
+
+def upsert_chunks(
+    ref: RepositoryRef, chunks: list[Chunk], vectors: list[list[float]]
+) -> int:
+    """Koleksiyonu SIFIRLAMADAN yalnizca verilen parcalari ekler/gunceller.
+
+    Adim 19 (incremental indexing) icin: cagiran taraf, degisen/silinen
+    dosyalarin ESKI parcalarini bu cagridan ONCE `delete_file_chunks` ile
+    temizlemis olmalidir; aksi halde bir dosyanin eski (artik yanlis satir
+    araligina sahip) parcalari yenileriyle birlikte kalir.
+    """
+    client = get_client()
+    name = ensure_collection(ref)
+    count = _upsert(client, name, chunks, vectors)
+
+    from app.services.keyword_search import invalidate
+
+    invalidate(ref)
+
+    return count
+
+
+def delete_file_chunks(ref: RepositoryRef, file_path: str) -> None:
+    """Tek bir dosyaya ait butun parcalari koleksiyondan siler.
+
+    Adim 19: bir dosya degistiginde chunk sinirlari da degisebilir (satir
+    araliklari kayar), bu yuzden "yeni parcalari upsert et" yetmez - o
+    dosyanin ESKI parcalari once silinmeli.
+    """
+    client = get_client()
+    name = collection_name(ref)
+    if not client.collection_exists(name):
+        return
+
+    client.delete(
+        collection_name=name,
+        points_selector=FilterSelector(
+            filter=Filter(
+                must=[FieldCondition(key="file_path", match=MatchValue(value=file_path))]
+            )
+        ),
+    )
 
 
 def stored_count(ref: RepositoryRef) -> int:

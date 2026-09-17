@@ -32,6 +32,7 @@ from app.schemas import (
     EmbedRepositoryResponse,
     FileScanResponse,
     IndexResponse,
+    ReindexResponse,
     RepositoryFile,
     SearchHitOut,
     SearchRequest,
@@ -45,6 +46,7 @@ from app.services.embedder import (
 )
 from app.services.ast_chunker import chunk_repository
 from app.services.dependency_graph import build_dependency_graph
+from app.services.incremental_index import reindex_repository
 from app.services.chunker import (
     CHUNK_OVERLAP_LINES,
     CHUNK_SIZE_LINES,
@@ -355,6 +357,38 @@ def index_repository(owner: str, name: str) -> IndexResponse:
         stored_count=stored_count(ref),
         embed_duration_ms=round(embed_ms, 1),
         store_duration_ms=round(store_ms, 1),
+    )
+
+
+@app.post("/repositories/{owner}/{name}/reindex", response_model=ReindexResponse)
+def reindex_repository_endpoint(owner: str, name: str) -> ReindexResponse:
+    """Repository'yi son commit'e gunceller, yalnizca degisen dosyalari yeniden indeksler.
+
+    Adim 19: `/index` (yukarida) her zaman TAM indeksleme yapar - eval
+    betikleri (Adim 15/16) bu davranisa dayanir ve sabit bir commit'i
+    olctugu icin buradan etkilenmemelidir. Bu endpoint ayri bir yoldur:
+    klonu gunceller, degisiklikleri tespit eder, yalnizca onlari isler.
+    """
+    try:
+        ref = build_reference(owner, name)
+        result = reindex_repository(ref)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    return ReindexResponse(
+        owner=ref.owner,
+        name=ref.name,
+        previous_commit=result.previous_commit,
+        commit=result.commit,
+        added=result.added,
+        modified=result.modified,
+        deleted=result.deleted,
+        unchanged_count=result.unchanged_count,
+        chunk_count=result.chunk_count,
+        embed_duration_ms=result.embed_ms,
+        store_duration_ms=result.store_ms,
     )
 
 
