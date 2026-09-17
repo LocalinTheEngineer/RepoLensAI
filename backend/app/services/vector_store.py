@@ -68,6 +68,11 @@ class SearchHit:
     symbol_name: str | None = None
     symbol_type: str | None = None
 
+    # Hybrid aramada doldurulur: parcanin vektor ve kelime listelerindeki
+    # sirasi. None = o yontem bu parcayi hic bulmadi.
+    vector_rank: int | None = None
+    keyword_rank: int | None = None
+
 
 def get_client() -> QdrantClient:
     """Qdrant istemcisini ilk kullanimda acar ve bellekte tutar.

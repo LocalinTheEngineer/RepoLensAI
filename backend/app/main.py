@@ -54,9 +54,10 @@ from app.services.file_scanner import (
 )
 from app.services.answerer import generate_answer
 from app.services.citations import count_unverified, verify_citations
+from app.services.hybrid_search import search as search_hybrid
 from app.services.keyword_search import search as search_keywords
 from app.services.vector_store import search as search_vectors
-from app.services.vector_store import store_chunks, stored_count
+from app.services.vector_store import SearchHit, store_chunks, stored_count
 from app.services.repository import (
     RepositoryError,
     build_reference,
@@ -316,17 +317,42 @@ def index_repository(owner: str, name: str) -> IndexResponse:
     )
 
 
+def to_hit_out(hit: SearchHit) -> SearchHitOut:
+    """Servis katmanindaki arama sonucunu API modeline cevirir.
+
+    Hem /search hem /ask ayni donusumu yapiyordu. Tek yerde durunca yeni bir
+    alan eklendiginde (orn. Adim 13-un vector_rank / keyword_rank alanlari)
+    iki endpointten birini guncellemeyi unutma riski kalmiyor.
+    """
+    return SearchHitOut(
+        chunk_id=hit.chunk_id,
+        file_path=hit.file_path,
+        start_line=hit.start_line,
+        end_line=hit.end_line,
+        content=hit.content,
+        # RRF puanlari 0.03 civari kucuk sayilardir; 4 hanede birbirine cok
+        # yakin siralar ayirt edilemiyordu, o yuzden 6 hane.
+        score=round(hit.score, 6),
+        symbol_name=hit.symbol_name,
+        symbol_type=hit.symbol_type,
+        vector_rank=hit.vector_rank,
+        keyword_rank=hit.keyword_rank,
+    )
+
+
 @app.post("/repositories/{owner}/{name}/search", response_model=SearchResponse)
 def search_repository(
     owner: str, name: str, payload: SearchRequest
 ) -> SearchResponse:
-    """Sorguya anlamca en yakin kod parcalarini dondurur."""
+    """Sorguya en alakali kod parcalarini, secilen arama moduyla dondurur."""
     started = time.perf_counter()
     try:
         ref = build_reference(owner, name)
 
         if payload.mode == "keyword":
             hits = search_keywords(ref, payload.query, limit=payload.limit)
+        elif payload.mode == "hybrid":
+            hits = search_hybrid(ref, payload.query, limit=payload.limit)
         else:
             query_vector = embed_query(payload.query)
             hits = search_vectors(ref, query_vector, limit=payload.limit)
@@ -342,19 +368,7 @@ def search_repository(
         query=payload.query,
         mode=payload.mode,
         duration_ms=round(duration_ms, 1),
-        hits=[
-            SearchHitOut(
-                chunk_id=hit.chunk_id,
-                file_path=hit.file_path,
-                start_line=hit.start_line,
-                end_line=hit.end_line,
-                content=hit.content,
-                score=round(hit.score, 4),
-                symbol_name=hit.symbol_name,
-                symbol_type=hit.symbol_type,
-            )
-            for hit in hits
-        ],
+        hits=[to_hit_out(hit) for hit in hits],
     )
 
 
@@ -370,8 +384,10 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         ref = build_reference(owner, name)
 
         retrieval_started = time.perf_counter()
-        query_vector = embed_query(payload.question)
-        hits = search_vectors(ref, query_vector, limit=payload.limit)
+        # Adim 13: cevaplar da hybrid retrieval kullaniyor. Anlamsal arama
+        # kavrami, BM25 birebir ismi yakaliyor; LLM-e ikisinin RRF ile
+        # birlestirilmis sonucu gidiyor.
+        hits = search_hybrid(ref, payload.question, limit=payload.limit)
         retrieval_ms = (time.perf_counter() - retrieval_started) * 1000
 
         generation_started = time.perf_counter()
@@ -394,19 +410,7 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         model=answer.model,
         retrieval_ms=round(retrieval_ms, 1),
         generation_ms=round(generation_ms, 1),
-        sources=[
-            SearchHitOut(
-                chunk_id=hit.chunk_id,
-                file_path=hit.file_path,
-                start_line=hit.start_line,
-                end_line=hit.end_line,
-                content=hit.content,
-                score=round(hit.score, 4),
-                symbol_name=hit.symbol_name,
-                symbol_type=hit.symbol_type,
-            )
-            for hit in hits
-        ],
+        sources=[to_hit_out(hit) for hit in hits],
         citations=[
             CitationOut(
                 file_path=citation.file_path,

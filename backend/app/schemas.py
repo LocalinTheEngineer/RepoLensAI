@@ -153,9 +153,10 @@ class SearchRequest(BaseModel):
         le=20,
         description="Kac sonuc dondurulecek",
     )
-    mode: Literal["semantic", "keyword"] = Field(
-        "semantic",
+    mode: Literal["semantic", "keyword", "hybrid"] = Field(
+        "hybrid",
         description=(
+            "hybrid = ikisinin RRF ile birlesimi (varsayilan), "
             "semantic = anlamsal (embedding) arama, "
             "keyword = kelime tabanli (BM25) arama"
         ),
@@ -174,13 +175,19 @@ class SearchHitOut(BaseModel):
     symbol_name: str | None = None
     symbol_type: str | None = None
 
+    # Yalnizca hybrid modda dolu: parcayi hangi yontem kacinci sirada buldu.
+    # null = o yontem bu parcayi hic bulmadi.
+    vector_rank: int | None = None
+    keyword_rank: int | None = None
+
 
 class SearchResponse(BaseModel):
     """Arama sonucu ve kaynaklari.
 
     DIKKAT: skor olcegi moda gore farklidir. semantic modda kosinus
-    benzerligi (0-1 arasi), keyword modda BM25 skoru (sinirsiz pozitif sayi).
-    Ikisi dogrudan karsilastirilamaz.
+    benzerligi (0-1 arasi), keyword modda BM25 skoru (sinirsiz pozitif sayi),
+    hybrid modda RRF puani (0-a yakin kucuk sayilar). Uc olcek birbiriyle
+    dogrudan karsilastirilamaz.
     """
 
     owner: str
