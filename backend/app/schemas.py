@@ -161,6 +161,14 @@ class SearchRequest(BaseModel):
             "keyword = kelime tabanli (BM25) arama"
         ),
     )
+    rerank: bool = Field(
+        False,
+        description=(
+            "true ise once genis bir aday havuzu cekilir, sonra cross-encoder "
+            "ile yeniden siralanip en iyi `limit` tanesi dondurulur. Daha "
+            "isabetli ama daha yavas."
+        ),
+    )
 
 
 class SearchHitOut(BaseModel):
@@ -180,6 +188,10 @@ class SearchHitOut(BaseModel):
     vector_rank: int | None = None
     keyword_rank: int | None = None
 
+    # Yalnizca rerank istendiginde dolu: cross-encoder puani. Retrieval
+    # skorlariyla ayni olcekte DEGILDIR, ayri bir modelin puanidir.
+    rerank_score: float | None = None
+
 
 class SearchResponse(BaseModel):
     """Arama sonucu ve kaynaklari.
@@ -195,6 +207,10 @@ class SearchResponse(BaseModel):
     query: str
     mode: str
     duration_ms: float
+
+    # Rerank asamasinin suresi; rerank istenmediyse null.
+    rerank_ms: float | None = None
+
     hits: list[SearchHitOut]
 
 
@@ -241,6 +257,7 @@ class AskResponse(BaseModel):
     answer: str
     model: str
     retrieval_ms: float
+    rerank_ms: float
     generation_ms: float
     sources: list[SearchHitOut]
     citations: list[CitationOut]

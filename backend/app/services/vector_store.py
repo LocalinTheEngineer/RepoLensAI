@@ -73,6 +73,9 @@ class SearchHit:
     vector_rank: int | None = None
     keyword_rank: int | None = None
 
+    # Adim 14: cross-encoder reranker puani. None = rerank calistirilmadi.
+    rerank_score: float | None = None
+
 
 def get_client() -> QdrantClient:
     """Qdrant istemcisini ilk kullanimda acar ve bellekte tutar.

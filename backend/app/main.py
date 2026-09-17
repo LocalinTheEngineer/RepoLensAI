@@ -56,6 +56,8 @@ from app.services.answerer import generate_answer
 from app.services.citations import count_unverified, verify_citations
 from app.services.hybrid_search import search as search_hybrid
 from app.services.keyword_search import search as search_keywords
+from app.services.reranker import CANDIDATE_LIMIT as RERANK_CANDIDATES
+from app.services.reranker import rerank
 from app.services.vector_store import search as search_vectors
 from app.services.vector_store import SearchHit, store_chunks, stored_count
 from app.services.repository import (
@@ -337,6 +339,7 @@ def to_hit_out(hit: SearchHit) -> SearchHitOut:
         symbol_type=hit.symbol_type,
         vector_rank=hit.vector_rank,
         keyword_rank=hit.keyword_rank,
+        rerank_score=hit.rerank_score,
     )
 
 
@@ -346,16 +349,26 @@ def search_repository(
 ) -> SearchResponse:
     """Sorguya en alakali kod parcalarini, secilen arama moduyla dondurur."""
     started = time.perf_counter()
+    rerank_ms: float | None = None
     try:
         ref = build_reference(owner, name)
 
+        # Reranker kullanilacaksa retrieval daha genis bir havuz cekmeli;
+        # asil eleme ikinci asamada, cross-encoder ile yapilacak.
+        retrieve_limit = RERANK_CANDIDATES if payload.rerank else payload.limit
+
         if payload.mode == "keyword":
-            hits = search_keywords(ref, payload.query, limit=payload.limit)
+            hits = search_keywords(ref, payload.query, limit=retrieve_limit)
         elif payload.mode == "hybrid":
-            hits = search_hybrid(ref, payload.query, limit=payload.limit)
+            hits = search_hybrid(ref, payload.query, limit=retrieve_limit)
         else:
             query_vector = embed_query(payload.query)
-            hits = search_vectors(ref, query_vector, limit=payload.limit)
+            hits = search_vectors(ref, query_vector, limit=retrieve_limit)
+
+        if payload.rerank:
+            rerank_started = time.perf_counter()
+            hits = rerank(payload.query, hits, limit=payload.limit)
+            rerank_ms = (time.perf_counter() - rerank_started) * 1000
     except RepositoryError as error:
         raise HTTPException(
             status_code=error.status_code, detail=error.message
@@ -368,6 +381,7 @@ def search_repository(
         query=payload.query,
         mode=payload.mode,
         duration_ms=round(duration_ms, 1),
+        rerank_ms=round(rerank_ms, 1) if rerank_ms is not None else None,
         hits=[to_hit_out(hit) for hit in hits],
     )
 
@@ -384,11 +398,18 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         ref = build_reference(owner, name)
 
         retrieval_started = time.perf_counter()
-        # Adim 13: cevaplar da hybrid retrieval kullaniyor. Anlamsal arama
-        # kavrami, BM25 birebir ismi yakaliyor; LLM-e ikisinin RRF ile
-        # birlestirilmis sonucu gidiyor.
-        hits = search_hybrid(ref, payload.question, limit=payload.limit)
+        # Iki asamali retrieval. Adim 13: hybrid arama (anlamsal kavrami,
+        # BM25 birebir ismi yakalar) genis bir aday havuzu cikarir. Adim 14:
+        # cross-encoder bu adaylari yeniden siralar ve LLM-e yalnizca en
+        # alakalilari gider.
+        candidates = search_hybrid(
+            ref, payload.question, limit=RERANK_CANDIDATES
+        )
         retrieval_ms = (time.perf_counter() - retrieval_started) * 1000
+
+        rerank_started = time.perf_counter()
+        hits = rerank(payload.question, candidates, limit=payload.limit)
+        rerank_ms = (time.perf_counter() - rerank_started) * 1000
 
         generation_started = time.perf_counter()
         answer = generate_answer(ref, payload.question, hits)
@@ -409,6 +430,7 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         answer=answer.text,
         model=answer.model,
         retrieval_ms=round(retrieval_ms, 1),
+        rerank_ms=round(rerank_ms, 1),
         generation_ms=round(generation_ms, 1),
         sources=[to_hit_out(hit) for hit in hits],
         citations=[
