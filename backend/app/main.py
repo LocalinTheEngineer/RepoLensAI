@@ -25,6 +25,8 @@ from app.schemas import (
     ChunkSummary,
     CloneRequest,
     CloneResponse,
+    DependencyEdge,
+    DependencyGraphResponse,
     EmbedQueryRequest,
     EmbedQueryResponse,
     EmbedRepositoryResponse,
@@ -42,6 +44,7 @@ from app.services.embedder import (
     embed_texts,
 )
 from app.services.ast_chunker import chunk_repository
+from app.services.dependency_graph import build_dependency_graph
 from app.services.chunker import (
     CHUNK_OVERLAP_LINES,
     CHUNK_SIZE_LINES,
@@ -220,6 +223,28 @@ def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
         ],
         truncated=chunk_count > len(shown),
         symbol_counts=count_symbols(result.chunks),
+    )
+
+
+@app.get(
+    "/repositories/{owner}/{name}/dependencies",
+    response_model=DependencyGraphResponse,
+)
+def get_dependency_graph(owner: str, name: str) -> DependencyGraphResponse:
+    """Repository'nin dosya-seviyesi import grafigini dondurur."""
+    try:
+        ref = build_reference(owner, name)
+        graph = build_dependency_graph(repository_path(ref))
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    return DependencyGraphResponse(
+        owner=ref.owner,
+        name=ref.name,
+        nodes=graph.nodes,
+        edges=[DependencyEdge(source=s, target=t) for s, t in graph.edges],
     )
 
 

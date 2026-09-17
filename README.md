@@ -63,7 +63,13 @@ top-level directories the files came from, how many functions and classes
 Tree-sitter found, and which files are the largest. Those counts run over
 every file and every chunk, not just the slice the UI happens to list.
 
-Step 17 of 25. Questions have to be in English.
+There's also a file-level dependency graph: which file imports which,
+drawn with Cytoscape.js. Python imports are resolved with the standard
+`ast` module, relative TypeScript/JavaScript imports with a small regex;
+external packages (flask, react, ...) never show up, since they don't
+correspond to a file in the repo.
+
+Step 18 of 25. Questions have to be in English.
 
 ## Running it
 
@@ -98,5 +104,5 @@ page just shows a connection error.
 Python + FastAPI on the backend, React + TypeScript on Vite up front.
 Tree-sitter parses the code. Embeddings and reranking both run locally with
 sentence-transformers (all-MiniLM-L6-v2 for embeddings, ms-marco-MiniLM-L-6-v2
-for reranking), vectors live in Qdrant, and Gemini writes the answers. Docker
-is in the plan but not in yet.
+for reranking), vectors live in Qdrant, and Gemini writes the answers.
+Cytoscape.js draws the dependency graph. Docker is in the plan but not in yet.

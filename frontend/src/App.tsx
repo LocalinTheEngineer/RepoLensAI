@@ -8,6 +8,7 @@ import {
   type Async,
   type AskResult,
   type ChunkScan,
+  type DependencyGraph,
   type FileScan,
   type Health,
   type IndexResult,
@@ -17,11 +18,12 @@ import {
 } from './api'
 import type { ChatTurn } from './components/ChatMessage'
 import ChatPanel from './components/ChatPanel'
+import DependencyGraphPanel from './components/DependencyGraphPanel'
 import SearchPanel from './components/SearchPanel'
 import Sidebar from './components/Sidebar'
 
 /** Ana alanda hangi sekme acik. */
-type Tab = 'chat' | 'search'
+type Tab = 'chat' | 'search' | 'graph'
 
 function App() {
   const [health, setHealth] = useState<Async<Health>>({ kind: 'loading' })
@@ -44,6 +46,8 @@ function App() {
   const [searchMode, setSearchMode] = useState<SearchMode>('hybrid')
   const [rerank, setRerank] = useState(false)
   const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
+
+  const [graph, setGraph] = useState<Async<DependencyGraph>>({ kind: 'idle' })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -75,6 +79,7 @@ function App() {
     setIndexState({ kind: 'idle' })
     setTurns([])
     setSearch({ kind: 'idle' })
+    setGraph({ kind: 'idle' })
 
     let repository: Repository
     try {
@@ -181,6 +186,24 @@ function App() {
     }
   }
 
+  /** Dosya-seviyesi bagimlilik grafigini cikartir. */
+  async function handleLoadGraph() {
+    if (clone.kind !== 'ok') return
+    const { owner, name } = clone.data
+
+    setGraph({ kind: 'loading' })
+    try {
+      setGraph({
+        kind: 'ok',
+        data: await fetchJson<DependencyGraph>(
+          `/repositories/${owner}/${name}/dependencies`,
+        ),
+      })
+    } catch (error) {
+      setGraph({ kind: 'error', message: describeError(error) })
+    }
+  }
+
   const loadingRepo =
     clone.kind === 'loading' ||
     scan.kind === 'loading' ||
@@ -221,6 +244,13 @@ function App() {
           >
             Ham arama
           </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'graph' ? 'tab--active' : ''}`}
+            onClick={() => setTab('graph')}
+          >
+            Bagimlilik grafigi
+          </button>
         </nav>
 
         {tab === 'chat' ? (
@@ -232,7 +262,7 @@ function App() {
             ready={indexed}
             busy={asking}
           />
-        ) : (
+        ) : tab === 'search' ? (
           <div className="search-tab">
             <SearchPanel
               state={search}
@@ -244,6 +274,14 @@ function App() {
               onRerankChange={setRerank}
               onSubmit={handleSearch}
               ready={indexed}
+            />
+          </div>
+        ) : (
+          <div className="search-tab">
+            <DependencyGraphPanel
+              state={graph}
+              ready={clone.kind === 'ok'}
+              onLoad={handleLoadGraph}
             />
           </div>
         )}

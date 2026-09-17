@@ -102,6 +102,19 @@ export type SearchHit = {
  */
 export type SearchMode = 'semantic' | 'keyword' | 'hybrid'
 
+export type DependencyEdge = {
+  source: string
+  target: string
+}
+
+/** Dosya-seviyesi import grafigi. Dis kutuphaneler grafige girmez. */
+export type DependencyGraph = {
+  owner: string
+  name: string
+  nodes: string[]
+  edges: DependencyEdge[]
+}
+
 export type SearchResult = {
   owner: string
   name: string

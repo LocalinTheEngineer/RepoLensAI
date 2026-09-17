@@ -146,6 +146,26 @@ class IndexResponse(BaseModel):
     store_duration_ms: float
 
 
+class DependencyEdge(BaseModel):
+    """Tek bir import iliskisi: `source` dosyasi `target` dosyasini import ediyor."""
+
+    source: str
+    target: str
+
+
+class DependencyGraphResponse(BaseModel):
+    """GET /repositories/{owner}/{name}/dependencies cevabi.
+
+    Yalnizca reponun KENDI dosyalari arasindaki importlar tutulur; dis
+    kutuphaneler (flask, react, os...) grafige girmez.
+    """
+
+    owner: str
+    name: str
+    nodes: list[str]
+    edges: list[DependencyEdge]
+
+
 class SearchRequest(BaseModel):
     """POST /repositories/{owner}/{name}/search istegiyle gonderilen govde."""
 
