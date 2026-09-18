@@ -17,7 +17,9 @@ Araclar SALT OKUNURDUR: arama, dosya okuma, referans bulma. Kabuk komutu ya
 da kod calistirma yoktur ve `read_file` repo klasorunun disina cikamaz.
 """
 
-from __future__ import annotations
+# DIKKAT: burada `from __future__ import annotations` YOK ve olmamali.
+# O satir tip ipuclarini metne cevirir; SDK arac parametrelerinin semasini
+# cikaramaz ve araclari otomatik CALISTIRMAZ, cagriyi ham donderir.
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -43,9 +45,18 @@ from app.services.reranker import CANDIDATE_LIMIT as RERANK_POOL
 from app.services.reranker import rerank
 from app.services.vector_store import SearchHit
 
-# Model en fazla bu kadar arac cagirabilir. Sinir yoksa bir sorunun
-# maliyeti ongorulemez hale gelir; 8 cagri pratikte bol bol yetiyor.
-MAX_TOOL_CALLS = 8
+# Model en fazla bu kadar arac cagirabilir. Sinir yoksa bir sorunun maliyeti
+# ongorulemez hale gelir. Butce bitince SDK son arac cagrisini CALISTIRMADAN
+# geri doner; o durumu asagida ayrica ele aliyoruz.
+MAX_TOOL_CALLS = 12
+
+# Butce bitip model hala arac cagirmak isterse, "artik yeter, elindekiyle
+# cevabi yaz" diyecegimiz mesaj.
+WRAP_UP_MESSAGE = (
+    "Stop searching now. Write the final answer using only the evidence you "
+    "have already gathered, with citations. If some part is still unsupported, "
+    "say so plainly."
+)
 
 # Tek bir arama kac parca dondursun.
 HITS_PER_SEARCH = 5
@@ -275,6 +286,12 @@ def investigate(ref: RepositoryRef, question: str) -> Investigation:
             # generate_content ile kullanildiginda uyari basiyor.
             chat = client.chats.create(model=model_name, config=config)
             response = chat.send_message(question)
+
+            # Arac butcesi bittiyse SDK metin yerine calistirilmamis bir
+            # function_call dondurur. Toplanan kaniti cope atmak yerine
+            # modelden elindekiyle cevabi yazmasini istiyoruz.
+            if not (response.text or "").strip() and recorder.steps:
+                response = chat.send_message(WRAP_UP_MESSAGE)
         except Exception as error:
             last_error = error
             if is_retriable_error(error):

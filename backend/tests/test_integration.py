@@ -182,6 +182,26 @@ class PipelineTests(unittest.TestCase):
         okunan = [hit for hit in recorder.evidence if hit.chunk_id == "auth.py:1-6"]
         self.assertEqual(len(okunan), 1)
 
+    def test_agent_arac_tip_ipuclari_metne_donmemis(self) -> None:
+        """Arac parametrelerinin tip ipuclari GERCEK tip olmali, metin degil.
+
+        `agent.py`'ye `from __future__ import annotations` eklenirse butun
+        ipuclari metne doner; SDK arac semasini cikaramaz ve araclari
+        otomatik CALISTIRMAZ - ham function_call donderir. Bu sessiz bir
+        bozulma: kod calisir, agent hicbir sey yapmadan bos cevap uretir.
+        """
+        import inspect
+
+        from app.services.agent import Recorder, build_tools
+
+        for tool in build_tools(self.ref, Recorder()):
+            for parametre in inspect.signature(tool).parameters.values():
+                self.assertNotIsInstance(
+                    parametre.annotation,
+                    str,
+                    f"{tool.__name__}({parametre.name}) ipucu metne donmus",
+                )
+
     def test_agent_repo_disina_cikamaz(self) -> None:
         """Yolu model uretiyor; repo kokunun disina cikmasi engellenmeli."""
         from app.services.agent import safe_path
