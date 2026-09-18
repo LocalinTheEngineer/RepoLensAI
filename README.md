@@ -86,6 +86,15 @@ Indexing doesn't block the request either. Kicking it off returns immediately
 with a job id, the work runs in the background, and the UI polls for the state
 it's in — queued, parsing, embedding, ready, failed.
 
+A few things guard the edges. Files carrying an obvious secret — a private key
+block, an AWS or Google key, a GitHub or Slack token — are left out of the
+index entirely, because anything indexed ends up in the vector store and then
+in a prompt. The endpoints that call the model are capped per minute, since the
+binding constraint is the model quota rather than the CPU, and an agent run
+spends close to ten calls on a single question. Asking the same question twice
+returns the first answer instead of paying for it again; re-indexing clears
+that.
+
 `backend/tests/` holds the checks: unit tests for filtering, chunking, symbol
 parsing and citation verification, and one integration test that runs the real
 pipeline end to end on a throwaway git repo — index, search, ask — with only
@@ -169,6 +178,9 @@ docker compose up --build
 
 Frontend on :5173, API on :8000. The first build is slow (it installs PyTorch);
 the first question is slow too, since the models download then.
+
+Deploying somewhere else? The frontend bakes the API address in at build time,
+so pass it: `docker build --build-arg VITE_API_URL=https://your-api ./frontend`.
 
 Without Docker, backend first:
 

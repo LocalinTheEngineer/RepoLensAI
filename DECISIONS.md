@@ -107,6 +107,29 @@ after a shallow fetch — the old commit's objects may simply not be there.
 Hashing each file's contents and comparing against the previous run's hashes
 gives the same added/modified/deleted split without depending on clone depth.
 
+## Why the limits are global rather than per user
+
+There's no auth and no tenants, so the thing worth protecting isn't a user's
+share of the server — it's the model quota, which is one pool for everyone.
+A per-IP limiter would let a single client burn it anyway, so the cap counts
+calls globally in a sliding minute.
+
+The answer cache works the same way: keyed by repository and question, cleared
+whenever that repository is written to, so a stale index can't serve a stale
+answer.
+
+## Why secret-scanning skips whole files
+
+Anything indexed gets embedded, stored, and eventually pasted into a prompt. A
+leaked key travelling that path is worse than a missing file, so a file with an
+obvious secret is dropped at scan time and reported with the other skip
+reasons.
+
+The patterns are deliberately narrow — provider prefixes like `AKIA`, `ghp_`,
+`AIza`, and private-key headers — with no "looks like a password" heuristic. A
+false positive would silently drop real source code and the answer would get
+worse for a reason nobody could see.
+
 ## Why background jobs are a dict and not Celery
 
 Indexing Flask takes about 40 seconds, which is too long to hold a request
@@ -119,10 +142,11 @@ neither is, and a queue would be one more service to run for no gain.
 
 ## What isn't decided yet
 
-**Deployment.** Compose runs everything locally, but the backend holds two
-models in memory and wants ~2 GB of RAM, which is above most free hosting
-tiers. Picking a host is a cost decision, so it's left open rather than
-guessed at.
+**Deployment.** Compose runs everything locally, and the frontend now takes its
+API address as a build argument, so nothing in the code pins it to localhost.
+What's left is a cost decision: the backend holds two models in memory and
+wants ~2 GB of RAM, which is above most free hosting tiers. That's left open
+rather than guessed at.
 
 **Non-English questions.** The embedding model is English-only, so questions
 have to be English. A multilingual embedding model would fix it and would
