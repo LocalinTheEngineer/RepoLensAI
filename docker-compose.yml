@@ -1,0 +1,44 @@
+# Tek komutla tum yigin:  docker compose up --build
+#
+# Adresler yerel gelistirmeyle AYNI tutuldu (frontend 5173, backend 8000).
+# Sebep: backend'in CORS listesi localhost:5173'e, frontend'in api.ts'i
+# 127.0.0.1:8000'e bakiyor. Ayni portlari kullaninca hicbir kod degismiyor.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    volumes:
+      - qdrant-storage:/qdrant/storage
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    # GEMINI_API_KEY buradan gelir. Dosya yoksa compose baslamaz; README'de
+    # anlatildigi gibi once backend/.env.example kopyalanmali.
+    env_file:
+      - ./backend/.env
+    environment:
+      # Dolu olunca vector_store yerel mod yerine bu sunucuya baglanir.
+      QDRANT_URL: http://qdrant:6333
+    volumes:
+      # Klonlanan repolar ve indirilen modeller konteyner silinince kaybolmasin.
+      - workspace:/app/workspace
+      - models:/models
+      # Incremental indexing durumu (commit + dosya hash'leri) burada tutulur.
+      - index-state:/app/qdrant_data
+    depends_on:
+      - qdrant
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  qdrant-storage:
+  workspace:
+  models:
+  index-state:

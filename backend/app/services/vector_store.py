@@ -1,17 +1,18 @@
 """Uretilen vektorleri saklar ve "en yakin komsu" aramasini yapar.
 
-Qdrant YEREL modda calisir: ayri bir sunucu veya Docker gerekmez, veri
-dogrudan diske yazilir. Adim 22'de gercek sunucuya gecmek icin yalnizca
-istemcinin kuruldugu satir degisecek:
+Iki modda calisir, karari QDRANT_URL ortam degiskeni verir:
 
-    QdrantClient(path=...)                     # su anki yerel mod
-    QdrantClient(url="http://localhost:6333")  # Docker'daki sunucu
+    QDRANT_URL bos    -> yerel mod, veri dogrudan diske yazilir.
+                         Hicbir sey kurmadan calisir (varsayilan).
+    QDRANT_URL dolu   -> o adresteki Qdrant sunucusuna baglanir.
+                         docker compose bunu ayarlar.
 
 Komutlar ve veri modeli iki modda da aynidir.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import threading
 import uuid
@@ -35,6 +36,11 @@ from app.services.repository import RepositoryError, RepositoryRef
 
 # Veritabani dosyalari backend/qdrant_data/ altinda tutulur.
 STORAGE_DIR = Path(__file__).resolve().parents[2] / "qdrant_data"
+
+# Adres verilmisse ayri bir Qdrant sunucusuna baglanilir (docker compose boyle
+# calisir), verilmemisse veri dogrudan STORAGE_DIR'e yazilir. Yerelde hicbir
+# sey kurmadan calisabilmek icin varsayilan yerel moddur.
+QDRANT_URL = os.getenv("QDRANT_URL", "").strip()
 
 # Her repository kendi koleksiyonuna yazilir; silmek ve yeniden indekslemek
 # boylece kolay olur, repolar birbirine karismaz.
@@ -90,13 +96,23 @@ def get_client() -> QdrantClient:
     if _client is None:
         with _client_lock:
             if _client is None:
-                STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+                if not QDRANT_URL:
+                    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
                 try:
-                    _client = QdrantClient(path=str(STORAGE_DIR))
+                    _client = (
+                        QdrantClient(url=QDRANT_URL)
+                        if QDRANT_URL
+                        else QdrantClient(path=str(STORAGE_DIR))
+                    )
                 except Exception as error:
+                    nerede = (
+                        f"{QDRANT_URL} adresindeki sunucuya baglanilamadi"
+                        if QDRANT_URL
+                        else f"baska bir islem {STORAGE_DIR} klasorunu "
+                        "kullaniyor olabilir"
+                    )
                     raise RepositoryError(
-                        "Vektor veritabani acilamadi. Baska bir islem "
-                        f"{STORAGE_DIR} klasorunu kullaniyor olabilir.",
+                        f"Vektor veritabani acilamadi: {nerede}.",
                         status_code=503,
                     ) from error
 

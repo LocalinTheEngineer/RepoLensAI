@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Klonlanan repolar ve vektor verisi imaja girmez; volume olarak baglanir.
+workspace/
+qdrant_data/
+
+# Anahtar iceren dosya imaja KOPYALANMAZ; compose env_file ile gecer.
+.env
+
+eval/
+tests/
