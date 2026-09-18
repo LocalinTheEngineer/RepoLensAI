@@ -187,7 +187,10 @@ class PipelineTests(unittest.TestCase):
         from app.services.agent import safe_path
         from app.services.repository import RepositoryError
 
-        for kotu in ("../../../etc/passwd", "..\\..\\windows\\win.ini"):
+        # Ters boluyu KULLANMIYORUZ: Linux'ta o bir yol ayraci degil, sadece
+        # garip bir dosya adidir ve repo icinde kalir. Asagidaki iki bicim
+        # her iki isletim sisteminde de disari cikmayi dener.
+        for kotu in ("../../../etc/passwd", "/etc/passwd"):
             with self.assertRaises(RepositoryError, msg=kotu):
                 safe_path(self.ref, kotu)
 
