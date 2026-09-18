@@ -21,6 +21,7 @@ da kod calistirma yoktur ve `read_file` repo klasorunun disina cikamaz.
 # O satir tip ipuclarini metne cevirir; SDK arac parametrelerinin semasini
 # cikaramaz ve araclari otomatik CALISTIRMAZ, cagriyi ham donderir.
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -48,6 +49,8 @@ from app.services.vector_store import SearchHit
 # Model en fazla bu kadar arac cagirabilir. Sinir yoksa bir sorunun maliyeti
 # ongorulemez hale gelir. Butce bitince SDK son arac cagrisini CALISTIRMADAN
 # geri doner; o durumu asagida ayrica ele aliyoruz.
+logger = logging.getLogger("repolens.agent")
+
 MAX_TOOL_CALLS = 12
 
 # Butce bitip model hala arac cagirmak isterse, "artik yeter, elindekiyle
@@ -295,6 +298,14 @@ def investigate(ref: RepositoryRef, question: str) -> Investigation:
         except Exception as error:
             last_error = error
             if is_retriable_error(error):
+                # Sessiz gecmek pahaliya mal oluyor: disaridan yalnizca
+                # "hepsi mesgul" gorunuyor, hangi modelin neden elendigi
+                # belli olmuyor (429 kota mi, 503 yogunluk mu?).
+                logger.warning(
+                    "%s elendi (%s), yedek modele geciliyor",
+                    model_name,
+                    str(error)[:120],
+                )
                 continue
             message, status_code = describe_api_failure(error)
             raise RepositoryError(message, status_code=status_code) from error

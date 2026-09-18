@@ -14,6 +14,7 @@ eklenir.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from dataclasses import dataclass
@@ -40,6 +41,8 @@ class IndexJob:
 # ponytail: process-ici dict + lock, tek surecli yerel kullanim icin yeterli;
 # birden fazla worker sureci calistirilirsa (prod) Redis gibi paylasimli bir
 # duruma tasi.
+logger = logging.getLogger("repolens.index")
+
 _jobs: dict[str, IndexJob] = {}
 _lock = threading.Lock()
 
@@ -83,6 +86,12 @@ def run_job(ref: RepositoryRef) -> None:
 
         job.stored_count = stored_count(ref)
         job.state = "ready"
+        logger.info(
+            "indekslendi: %s/%s - %d parca", ref.owner, ref.name, job.stored_count
+        )
     except Exception as error:  # ponytail: is hicbir sekilde asili/sessiz kalmamali
+        # Arka plan isi: kullanici yalnizca "failed" gorur, sebebi burada
+        # kayda gecmezse tamamen kaybolur.
+        logger.exception("indeksleme basarisiz: %s/%s", ref.owner, ref.name)
         job.state = "failed"
         job.error = str(error)

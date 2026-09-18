@@ -11,6 +11,7 @@ kanit bulamazsa uydurmak yerine bulamadigini soyler.
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from dataclasses import dataclass
@@ -65,6 +66,8 @@ Follow these rules strictly:
    number outside the excerpts you were given. (The only answer allowed with
    no citation is the one where you report finding no evidence.)
 6. Answer in English."""
+
+logger = logging.getLogger("repolens.answerer")
 
 _client: genai.Client | None = None
 _client_lock = threading.Lock()
@@ -202,6 +205,14 @@ def generate_answer(
         except Exception as error:
             last_error = error
             if is_retriable_error(error):
+                # Sessiz gecmek pahaliya mal oluyor: disaridan yalnizca
+                # "hepsi mesgul" gorunuyor, hangi modelin neden elendigi
+                # belli olmuyor (429 kota mi, 503 yogunluk mu?).
+                logger.warning(
+                    "%s elendi (%s), yedek modele geciliyor",
+                    model_name,
+                    str(error)[:120],
+                )
                 continue  # bu model yogun, sonrakini dene
             message, status_code = describe_api_failure(error)
             raise RepositoryError(message, status_code=status_code) from error

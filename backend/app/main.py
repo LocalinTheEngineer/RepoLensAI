@@ -11,6 +11,7 @@ Yol haritasi:
   Adim 8: .../ask         -> bulunan parcalardan LLM kaynakli cevap uretir
 """
 
+import logging
 import time
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
@@ -61,6 +62,7 @@ from app.services.file_scanner import (
 from app.services.agent import investigate
 from app.services.answerer import generate_answer
 from app.services.citations import count_unverified, verify_citations
+from app.services.rate_limit import check as check_rate_limit
 from app.services.hybrid_search import search as search_hybrid
 from app.services.keyword_search import search as search_keywords
 from app.services.reranker import CANDIDATE_LIMIT as RERANK_CANDIDATES
@@ -77,6 +79,10 @@ from app.services.repository import (
 
 # Uygulama nesnesi. title/description/version degerleri
 # otomatik olusan API dokumantasyonunda (/docs) gorunur.
+# uvicorn kendi log yapilandirmasini kurar; biz yalnizca kendi
+# olaylarimiz icin bir logger aliyoruz.
+logger = logging.getLogger("repolens")
+
 app = FastAPI(
     title="RepoLens AI API",
     description="GitHub repository'lerini analiz eden AI developer tool'un backend servisi.",
@@ -108,6 +114,15 @@ async def repository_error_handler(
     Onceden her endpoint ayni try/except'i tekrar ediyordu (12 kez). Tek
     yerde durunca yeni bir endpoint yazarken unutulmasi da mumkun degil.
     """
+    # 5xx bizim hatamiz: yigin izini de yaz. 4xx kullanici kaynakli,
+    # tek satir yeter - yoksa log gurultuye bogulur.
+    if error.status_code >= 500:
+        logger.exception("%s -> %s", request.url.path, error.message)
+    else:
+        logger.info(
+            "%s -> %s %s", request.url.path, error.status_code, error.message
+        )
+
     return JSONResponse(
         status_code=error.status_code, content={"detail": error.message}
     )
@@ -386,6 +401,9 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
     Model yalnizca bu parcalara dayanarak cevap verir; kanit yoksa
     uydurmak yerine bulamadigini soyler.
     """
+    # Model kotasi kisitli kaynak; retrieval'e girmeden once izin al.
+    check_rate_limit()
+
     ref = build_reference(owner, name)
 
     retrieval_started = time.perf_counter()
@@ -448,6 +466,10 @@ def investigate_repository(
     tek bir aramanin sonucu degil, adim adim biriken kanit havuzudur ve
     citation dogrulamasi o havuza gore yapilir.
     """
+    # Bir arastirma tek soruda ona yakin model cagrisi yapiyor; sinir
+    # burada daha da onemli.
+    check_rate_limit()
+
     started = time.perf_counter()
     ref = build_reference(owner, name)
     result = investigate(ref, payload.question)

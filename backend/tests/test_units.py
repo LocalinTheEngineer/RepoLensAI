@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from collections import deque
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -23,9 +24,13 @@ from app.services.dependency_graph import (  # noqa: E402
     build_python_index,
     extract_python_imports,
 )
-from app.services.file_scanner import is_in_ignored_directory  # noqa: E402
+from app.services.file_scanner import (  # noqa: E402
+    contains_secret,
+    is_in_ignored_directory,
+)
 from app.services.hybrid_search import fuse  # noqa: E402
 from app.services.incremental_index import diff_files  # noqa: E402
+from app.services import rate_limit  # noqa: E402
 from app.services.keyword_search import tokenize  # noqa: E402
 from app.services.repository import RepositoryError, parse_github_url  # noqa: E402
 from app.services.vector_store import SearchHit  # noqa: E402
@@ -59,6 +64,31 @@ class FilteringTests(unittest.TestCase):
     def test_yalnizca_klasor_adina_bakilir(self) -> None:
         # "dist" burada dosya adi, klasor degil; elenmemeli.
         self.assertFalse(is_in_ignored_directory("src/dist.py"))
+
+
+class SecretDetectionTests(unittest.TestCase):
+    """Sir iceren dosya indekslenirse sir Qdrant'a ve LLM'e gider."""
+
+    def test_bilinen_sir_bicimleri_yakalanir(self) -> None:
+        for kaynak in (
+            "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIB...\n",
+            'aws_key = "AKIAIOSFODNN7EXAMPLE"',
+            'GOOGLE = "AIzaSyD-1234567890abcdefghijklmnopqrstu"',
+            "token = ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+            "slack = xoxb-1234567890-abcdefghij",
+        ):
+            self.assertTrue(contains_secret(kaynak), kaynak[:40])
+
+    def test_siradan_kod_yanlis_pozitif_uretmez(self) -> None:
+        """Yanlis pozitif gercek kaynak dosyasini sessizce indeks disi birakir."""
+        for kaynak in (
+            "def login(user, password):\n    return check(password)\n",
+            'API_KEY = os.getenv("API_KEY")',
+            "# AKIA is the prefix used by AWS access keys",
+            'password = "hunter2"',
+            "const token = useAuthToken()",
+        ):
+            self.assertFalse(contains_secret(kaynak), kaynak[:40])
 
 
 class ChunkTextTests(unittest.TestCase):
@@ -285,6 +315,40 @@ class PythonImportIndexTests(unittest.TestCase):
 
         self.assertIn("os", moduller)
         self.assertIn("flask.app", moduller)
+
+
+class RateLimitTests(unittest.TestCase):
+    """LLM endpointlerini koruyan kayan pencere."""
+
+    def setUp(self) -> None:
+        rate_limit.reset()
+
+    def tearDown(self) -> None:
+        rate_limit.reset()
+
+    def test_sinira_kadar_izin_verir(self) -> None:
+        for _ in range(rate_limit.MAX_CALLS_PER_WINDOW):
+            rate_limit.check()
+
+    def test_sinir_asilinca_429_firlatir(self) -> None:
+        for _ in range(rate_limit.MAX_CALLS_PER_WINDOW):
+            rate_limit.check()
+
+        with self.assertRaises(RepositoryError) as yakalanan:
+            rate_limit.check()
+
+        self.assertEqual(yakalanan.exception.status_code, 429)
+
+    def test_pencere_kayinca_yeniden_izin_verir(self) -> None:
+        # Saati ileri sarmak yerine kayitlari eskitiyoruz: test beklemesin.
+        for _ in range(rate_limit.MAX_CALLS_PER_WINDOW):
+            rate_limit.check()
+
+        rate_limit._calls = deque(
+            zaman - rate_limit.WINDOW_SECONDS - 1 for zaman in rate_limit._calls
+        )
+
+        rate_limit.check()  # pencere bosaldi, gecmeli
 
 
 class RepositoryUrlTests(unittest.TestCase):

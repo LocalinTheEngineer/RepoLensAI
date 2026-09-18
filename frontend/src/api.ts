@@ -1,7 +1,14 @@
 /** Backend ile konusmak icin gereken tipler ve yardimcilar. */
 
-// Backend'in adresi. Ileride .env dosyasina tasinacak.
-export const API_URL = 'http://127.0.0.1:8000'
+/**
+ * Backend'in adresi.
+ *
+ * Vite ortam degiskenleri DERLEME aninda gomulur; bu yuzden farkli bir
+ * sunucuya deploy ederken `VITE_API_URL` build sirasinda verilmelidir
+ * (Dockerfile bunu bir build argumani olarak alir). Verilmezse yerel
+ * gelistirme adresi kullanilir.
+ */
+export const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
 /** Bir istegin icinde bulunabilecegi dort durum. */
 export type Async<T> =
@@ -70,7 +77,6 @@ export type ChunkScan = {
 /** Adim 20: indeksleme arka planda calisir, bu durumlardan biriyle ilerler. */
 export type IndexJobState =
   | 'queued'
-  | 'cloning'
   | 'parsing'
   | 'embedding'
   | 'ready'
@@ -173,6 +179,7 @@ export const SKIP_LABELS: Record<string, string> = {
   cok_buyuk: 'cok buyuk dosya',
   binary_veya_bozuk: 'binary dosya',
   okunamadi: 'okunamadi',
+  sir_iceriyor: 'sir iceriyor (API anahtari, ozel anahtar ...)',
 }
 
 /** FastAPI'nin hata cevabindan okunabilir bir mesaj cikarir. */

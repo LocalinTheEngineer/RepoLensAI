@@ -6,6 +6,7 @@ Binary dosyalar, uretilmis klasorler ve desteklenmeyen uzantilar elenir.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,6 +47,17 @@ IGNORED_DIRECTORIES = frozenset(
 
 # 1 MB ustu metin dosyalari genelde minified veya otomatik uretilmis olur.
 MAX_FILE_SIZE_BYTES = 1_000_000
+
+# Kendi basina "bu bir sirdir" diyen bicimler. Her biri saglayicinin kendi
+# belgeledigi sabit onekleri tasiyor, bu yuzden yanlis pozitif olasiligi cok
+# dusuk. Genel "parola benzeri dize" tahmini BILEREK yok.
+SECRET_PATTERNS = (
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),  # ssh/tls ozel anahtar
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),                # AWS access key id
+    re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),          # Google API anahtari
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b"),      # GitHub token
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),    # Slack token
+)
 
 # Cevapta en fazla bu kadar dosya donulur; JSON gereksiz sismesin.
 MAX_FILES_IN_RESPONSE = 200
@@ -132,6 +144,17 @@ def count_lines(text: str) -> int:
     return text.count("\n") + (0 if text.endswith("\n") else 1)
 
 
+def contains_secret(text: str) -> bool:
+    """Dosyada acikca sir gorunen bir sey var mi?
+
+    Kalipalar KASITLI olarak dar tutuldu: yanlis pozitif, gercek kaynak
+    dosyasini sessizce indeks disinda birakir ve kullanici nedenini
+    anlamaz. Bu yuzden yalnizca kendi basina tanimlayici olan bicimler
+    araniyor - "yuksek entropili dize" gibi tahminler yok.
+    """
+    return any(pattern.search(text) for pattern in SECRET_PATTERNS)
+
+
 def scan_repository(repo_path: Path) -> ScanResult:
     """Repository'yi tarar ve islenecek dosyalarin listesini cikarir."""
     tracked = list_tracked_files(repo_path)
@@ -161,6 +184,13 @@ def scan_repository(repo_path: Path) -> ScanResult:
         text = read_text_file(absolute)
         if text is None:
             result.skip("binary_veya_bozuk")
+            continue
+
+        # Sir iceren dosya indekslenirse sir once Qdrant'a yazilir, sonra da
+        # soru sorulunca LLM'e gonderilir. Tarama disinda birakmak, sonradan
+        # temizlemekten kolay.
+        if contains_secret(text):
+            result.skip("sir_iceriyor")
             continue
 
         result.selected.append(

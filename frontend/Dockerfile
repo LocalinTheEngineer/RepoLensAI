@@ -6,6 +6,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Farkli bir host-a deploy ederken adres burada verilir:
+#   docker build --build-arg VITE_API_URL=https://api.ornek.com ./frontend
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY . .
 RUN npm run build
 
