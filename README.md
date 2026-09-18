@@ -83,7 +83,12 @@ parsing and citation verification, and one integration test that runs the real
 pipeline end to end on a throwaway git repo — index, search, ask — with only
 the LLM call faked. `python -m unittest discover tests`.
 
-Step 21 of 25. Questions have to be in English.
+The whole stack runs with one command. `docker compose up --build` brings up
+Qdrant, the API and the built frontend on the same ports the local setup uses,
+so nothing in the code has to change between the two. Qdrant switches from
+embedded to server mode by an environment variable and nothing else.
+
+Step 22 of 25. Questions have to be in English.
 
 ## Running it
 
