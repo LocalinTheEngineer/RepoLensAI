@@ -13,7 +13,8 @@ Yol haritasi:
 
 import time
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
@@ -21,16 +22,12 @@ from app.schemas import (
     AskRequest,
     AskResponse,
     CitationOut,
-    ChunkEmbeddingSample,
     ChunkResponse,
     ChunkSummary,
     CloneRequest,
     CloneResponse,
     DependencyEdge,
     DependencyGraphResponse,
-    EmbedQueryRequest,
-    EmbedQueryResponse,
-    EmbedRepositoryResponse,
     FileScanResponse,
     IndexJobStatus,
     InvestigateRequest,
@@ -42,10 +39,7 @@ from app.schemas import (
     SearchResponse,
 )
 from app.services.embedder import (
-    EMBEDDING_DIMENSIONS,
-    MODEL_NAME,
     embed_query,
-    embed_texts,
 )
 from app.services.ast_chunker import chunk_repository
 from app.services.dependency_graph import build_dependency_graph
@@ -105,6 +99,20 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(RepositoryError)
+async def repository_error_handler(
+    request: Request, error: RepositoryError
+) -> JSONResponse:
+    """Servis katmaninin hatasini HTTP cevabina cevirir.
+
+    Onceden her endpoint ayni try/except'i tekrar ediyordu (12 kez). Tek
+    yerde durunca yeni bir endpoint yazarken unutulmasi da mumkun degil.
+    """
+    return JSONResponse(
+        status_code=error.status_code, content={"detail": error.message}
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     """Servisin ayakta olup olmadigini bildirir."""
@@ -118,13 +126,8 @@ def health() -> dict[str, str]:
 @app.post("/repositories", response_model=CloneResponse)
 def create_repository(payload: CloneRequest) -> CloneResponse:
     """Verilen public GitHub adresindeki repository'yi yerel workspace'e indirir."""
-    try:
-        ref = parse_github_url(payload.url)
-        path, commit, already_cloned = clone_repository(ref)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = parse_github_url(payload.url)
+    path, commit, already_cloned = clone_repository(ref)
 
     return CloneResponse(
         owner=ref.owner,
@@ -141,14 +144,9 @@ def create_repository(payload: CloneRequest) -> CloneResponse:
 )
 def list_repository_files(owner: str, name: str) -> FileScanResponse:
     """Indirilmis repository icinden islenecek kaynak dosyalari listeler."""
-    try:
-        ref = build_reference(owner, name)
-        path = repository_path(ref)
-        result = scan_repository(path)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
+    path = repository_path(ref)
+    result = scan_repository(path)
 
     skipped_count = sum(result.skipped.values())
     shown = result.selected[:MAX_FILES_IN_RESPONSE]
@@ -191,14 +189,9 @@ def list_repository_files(owner: str, name: str) -> FileScanResponse:
 )
 def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
     """Repository'nin kaynak dosyalarini satir araligi bilgisiyle parcalara ayirir."""
-    try:
-        ref = build_reference(owner, name)
-        path = repository_path(ref)
-        result = chunk_repository(path)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
+    path = repository_path(ref)
+    result = chunk_repository(path)
 
     total_lines = sum(chunk.line_count for chunk in result.chunks)
     chunk_count = len(result.chunks)
@@ -239,93 +232,14 @@ def list_repository_chunks(owner: str, name: str) -> ChunkResponse:
 )
 def get_dependency_graph(owner: str, name: str) -> DependencyGraphResponse:
     """Repository'nin dosya-seviyesi import grafigini dondurur."""
-    try:
-        ref = build_reference(owner, name)
-        graph = build_dependency_graph(repository_path(ref))
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
+    graph = build_dependency_graph(repository_path(ref))
 
     return DependencyGraphResponse(
         owner=ref.owner,
         name=ref.name,
         nodes=graph.nodes,
         edges=[DependencyEdge(source=s, target=t) for s, t in graph.edges],
-    )
-
-
-# Vektorler 384 sayidan olusur; cevapta yalnizca ilk birkacini gosteriyoruz.
-VECTOR_PREVIEW_LENGTH = 8
-
-# Ornek olarak dondurulecek parca sayisi.
-EMBEDDING_SAMPLE_COUNT = 3
-
-
-@app.post("/embeddings/query", response_model=EmbedQueryResponse)
-def create_query_embedding(payload: EmbedQueryRequest) -> EmbedQueryResponse:
-    """Bir kullanici sorgusunu sayisal vektore cevirir."""
-    started = time.perf_counter()
-    try:
-        vector = embed_query(payload.text)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
-    duration_ms = (time.perf_counter() - started) * 1000
-
-    return EmbedQueryResponse(
-        embedding_model=MODEL_NAME,
-        dimensions=len(vector),
-        duration_ms=round(duration_ms, 1),
-        vector_preview=[round(value, 4) for value in vector[:VECTOR_PREVIEW_LENGTH]],
-    )
-
-
-@app.get(
-    "/repositories/{owner}/{name}/embeddings",
-    response_model=EmbedRepositoryResponse,
-)
-def create_repository_embeddings(owner: str, name: str) -> EmbedRepositoryResponse:
-    """Repository'nin tum kod parcalarini vektore cevirir.
-
-    Not: uretilen vektorler henuz hicbir yerde saklanmiyor. Kalici depolama
-    Adim 6'da Qdrant ile gelecek; su an amac uretimin calistigini gostermek.
-    """
-    try:
-        ref = build_reference(owner, name)
-        path = repository_path(ref)
-        result = chunk_repository(path)
-
-        started = time.perf_counter()
-        vectors = embed_texts([chunk.content for chunk in result.chunks])
-        duration_ms = (time.perf_counter() - started) * 1000
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
-
-    seconds = duration_ms / 1000
-    return EmbedRepositoryResponse(
-        owner=ref.owner,
-        name=ref.name,
-        embedding_model=MODEL_NAME,
-        dimensions=EMBEDDING_DIMENSIONS,
-        chunk_count=len(vectors),
-        duration_ms=round(duration_ms, 1),
-        chunks_per_second=round(len(vectors) / seconds, 1) if seconds else 0.0,
-        samples=[
-            ChunkEmbeddingSample(
-                chunk_id=chunk.chunk_id,
-                vector_preview=[
-                    round(value, 4) for value in vector[:VECTOR_PREVIEW_LENGTH]
-                ],
-            )
-            for chunk, vector in zip(
-                result.chunks[:EMBEDDING_SAMPLE_COUNT],
-                vectors[:EMBEDDING_SAMPLE_COUNT],
-            )
-        ],
     )
 
 
@@ -354,13 +268,8 @@ def index_repository(
     kayitlar cogalmaz; her parca kendi chunk_id'sinden uretilen sabit bir
     kimlige sahiptir, uzerine yazilir.
     """
-    try:
-        ref = build_reference(owner, name)
-        repository_path(ref)  # repo indirilmemisse burada 404 firlar
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
+    repository_path(ref)  # repo indirilmemisse burada 404 firlar
 
     job = start_job(ref)
     background_tasks.add_task(run_job, ref)
@@ -370,12 +279,7 @@ def index_repository(
 @app.get("/repositories/{owner}/{name}/index/status", response_model=IndexJobStatus)
 def index_status(owner: str, name: str) -> IndexJobStatus:
     """En son baslatilan indeksleme isinin guncel durumunu dondurur."""
-    try:
-        ref = build_reference(owner, name)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
 
     job = get_job(ref)
     if job is None:
@@ -394,13 +298,8 @@ def reindex_repository_endpoint(owner: str, name: str) -> ReindexResponse:
     olctugu icin buradan etkilenmemelidir. Bu endpoint ayri bir yoldur:
     klonu gunceller, degisiklikleri tespit eder, yalnizca onlari isler.
     """
-    try:
-        ref = build_reference(owner, name)
-        result = reindex_repository(ref)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
+    result = reindex_repository(ref)
 
     return ReindexResponse(
         owner=ref.owner,
@@ -448,29 +347,24 @@ def search_repository(
     """Sorguya en alakali kod parcalarini, secilen arama moduyla dondurur."""
     started = time.perf_counter()
     rerank_ms: float | None = None
-    try:
-        ref = build_reference(owner, name)
+    ref = build_reference(owner, name)
 
-        # Reranker kullanilacaksa retrieval daha genis bir havuz cekmeli;
-        # asil eleme ikinci asamada, cross-encoder ile yapilacak.
-        retrieve_limit = RERANK_CANDIDATES if payload.rerank else payload.limit
+    # Reranker kullanilacaksa retrieval daha genis bir havuz cekmeli;
+    # asil eleme ikinci asamada, cross-encoder ile yapilacak.
+    retrieve_limit = RERANK_CANDIDATES if payload.rerank else payload.limit
 
-        if payload.mode == "keyword":
-            hits = search_keywords(ref, payload.query, limit=retrieve_limit)
-        elif payload.mode == "hybrid":
-            hits = search_hybrid(ref, payload.query, limit=retrieve_limit)
-        else:
-            query_vector = embed_query(payload.query)
-            hits = search_vectors(ref, query_vector, limit=retrieve_limit)
+    if payload.mode == "keyword":
+        hits = search_keywords(ref, payload.query, limit=retrieve_limit)
+    elif payload.mode == "hybrid":
+        hits = search_hybrid(ref, payload.query, limit=retrieve_limit)
+    else:
+        query_vector = embed_query(payload.query)
+        hits = search_vectors(ref, query_vector, limit=retrieve_limit)
 
-        if payload.rerank:
-            rerank_started = time.perf_counter()
-            hits = rerank(payload.query, hits, limit=payload.limit)
-            rerank_ms = (time.perf_counter() - rerank_started) * 1000
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    if payload.rerank:
+        rerank_started = time.perf_counter()
+        hits = rerank(payload.query, hits, limit=payload.limit)
+        rerank_ms = (time.perf_counter() - rerank_started) * 1000
     duration_ms = (time.perf_counter() - started) * 1000
 
     return SearchResponse(
@@ -492,34 +386,29 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
     Model yalnizca bu parcalara dayanarak cevap verir; kanit yoksa
     uydurmak yerine bulamadigini soyler.
     """
-    try:
-        ref = build_reference(owner, name)
+    ref = build_reference(owner, name)
 
-        retrieval_started = time.perf_counter()
-        # Iki asamali retrieval. Adim 13: hybrid arama (anlamsal kavrami,
-        # BM25 birebir ismi yakalar) genis bir aday havuzu cikarir. Adim 14:
-        # cross-encoder bu adaylari yeniden siralar ve LLM-e yalnizca en
-        # alakalilari gider.
-        candidates = search_hybrid(
-            ref, payload.question, limit=RERANK_CANDIDATES
-        )
-        retrieval_ms = (time.perf_counter() - retrieval_started) * 1000
+    retrieval_started = time.perf_counter()
+    # Iki asamali retrieval. Adim 13: hybrid arama (anlamsal kavrami,
+    # BM25 birebir ismi yakalar) genis bir aday havuzu cikarir. Adim 14:
+    # cross-encoder bu adaylari yeniden siralar ve LLM-e yalnizca en
+    # alakalilari gider.
+    candidates = search_hybrid(
+        ref, payload.question, limit=RERANK_CANDIDATES
+    )
+    retrieval_ms = (time.perf_counter() - retrieval_started) * 1000
 
-        rerank_started = time.perf_counter()
-        hits = rerank(payload.question, candidates, limit=payload.limit)
-        rerank_ms = (time.perf_counter() - rerank_started) * 1000
+    rerank_started = time.perf_counter()
+    hits = rerank(payload.question, candidates, limit=payload.limit)
+    rerank_ms = (time.perf_counter() - rerank_started) * 1000
 
-        generation_started = time.perf_counter()
-        answer = generate_answer(ref, payload.question, hits)
-        generation_ms = (time.perf_counter() - generation_started) * 1000
+    generation_started = time.perf_counter()
+    answer = generate_answer(ref, payload.question, hits)
+    generation_ms = (time.perf_counter() - generation_started) * 1000
 
-        # Modelin yazdigi kaynak referanslarini, kendisine VERILEN parcalarla
-        # karsilastir. Uydurma referanslari boylece yakalariz.
-        citations = verify_citations(answer.text, hits)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    # Modelin yazdigi kaynak referanslarini, kendisine VERILEN parcalarla
+    # karsilastir. Uydurma referanslari boylece yakalariz.
+    citations = verify_citations(answer.text, hits)
 
     return AskResponse(
         owner=ref.owner,
@@ -560,14 +449,9 @@ def investigate_repository(
     citation dogrulamasi o havuza gore yapilir.
     """
     started = time.perf_counter()
-    try:
-        ref = build_reference(owner, name)
-        result = investigate(ref, payload.question)
-        citations = verify_citations(result.text, result.evidence)
-    except RepositoryError as error:
-        raise HTTPException(
-            status_code=error.status_code, detail=error.message
-        ) from error
+    ref = build_reference(owner, name)
+    result = investigate(ref, payload.question)
+    citations = verify_citations(result.text, result.evidence)
     duration_ms = (time.perf_counter() - started) * 1000
 
     return InvestigateResponse(

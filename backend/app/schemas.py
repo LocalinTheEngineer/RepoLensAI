@@ -88,51 +88,6 @@ class ChunkResponse(BaseModel):
     symbol_counts: dict[str, int]
 
 
-class EmbedQueryRequest(BaseModel):
-    """POST /embeddings/query istegiyle gonderilen govde."""
-
-    text: str = Field(
-        ...,
-        min_length=1,
-        max_length=1000,
-        description="Vektore cevrilecek kullanici sorgusu",
-        examples=["how does authentication work"],
-    )
-
-
-class EmbedQueryResponse(BaseModel):
-    """Bir sorgunun vektor karsiligi.
-
-    Alan adi `model_name` degil `embedding_model`; Pydantic `model_` ile
-    baslayan adlari kendi ic kullanimi icin ayirmistir.
-    """
-
-    embedding_model: str
-    dimensions: int
-    duration_ms: float
-    vector_preview: list[float]
-
-
-class ChunkEmbeddingSample(BaseModel):
-    """Ornek olarak gosterilen tek bir parcanin vektor onizlemesi."""
-
-    chunk_id: str
-    vector_preview: list[float]
-
-
-class EmbedRepositoryResponse(BaseModel):
-    """GET /repositories/{owner}/{name}/embeddings cevabi."""
-
-    owner: str
-    name: str
-    embedding_model: str
-    dimensions: int
-    chunk_count: int
-    duration_ms: float
-    chunks_per_second: float
-    samples: list[ChunkEmbeddingSample]
-
-
 class IndexJobStatus(BaseModel):
     """POST .../index ve GET .../index/status ortak cevabi.
 

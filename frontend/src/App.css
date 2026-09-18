@@ -416,32 +416,10 @@
   margin: 0 0 8px;
 }
 
-.result--ok {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
-}
 
-.result--error {
-  border-color: rgba(220, 38, 38, 0.5);
-  background: rgba(220, 38, 38, 0.08);
-}
 
-.result-details {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 14px;
-  margin: 12px 0 0;
-  font-size: 14px;
-}
 
-.result-details dt {
-  color: var(--text);
-}
 
-.result-details dd {
-  margin: 0;
-  min-width: 0;
-}
 
 .note {
   margin: 0;

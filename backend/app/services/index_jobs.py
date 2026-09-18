@@ -6,10 +6,10 @@ bir worker mimarisine gecis ancak birden fazla backend sureci calistiginda
 (orn. birden fazla uvicorn worker'i) gerekli olur; tek surecli yerel
 kullanimda bu yeterli.
 
-Durumlar roadmap'te belirtildigi gibi: queued, cloning, parsing, embedding,
-ready, failed. Bu akiste repo /index cagrildiginda zaten klonlanmis oldugu
-icin "cloning" pratikte kullanilmiyor; durum kumesi ileride tum akisi (clone
-dahil) arka plana alacak bir job icin de hazir.
+Durumlar: queued, parsing, embedding, ready, failed. Roadmap "cloning"i de
+sayiyor ama bu akista repo /index cagrildiginda zaten klonlanmis oluyor -
+hic girilmeyen bir durumu tasimak yerine, clone da arka plana alinirsa o gun
+eklenir.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from app.services.embedder import embed_texts
 from app.services.repository import RepositoryRef, repository_path
 from app.services.vector_store import store_chunks, stored_count
 
-JobState = Literal["queued", "cloning", "parsing", "embedding", "ready", "failed"]
+JobState = Literal["queued", "parsing", "embedding", "ready", "failed"]
 
 
 @dataclass

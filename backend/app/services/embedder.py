@@ -93,13 +93,3 @@ def embed_query(text: str) -> list[float]:
     """Tek bir kullanici sorgusunu vektore cevirir."""
     return embed_texts([text])[0]
 
-
-def cosine_similarity(first: list[float], second: list[float]) -> float:
-    """Iki vektorun benzerligi: 1.0 tamamen ayni yon, 0.0 alakasiz.
-
-    Vektorler normalize edildigi icin nokta carpimi kosinus benzerligine esittir;
-    ayrica bolme islemi yapmaya gerek kalmaz.
-    """
-    if len(first) != len(second):
-        raise ValueError("Vektor boyutlari ayni olmali.")
-    return sum(a * b for a, b in zip(first, second))

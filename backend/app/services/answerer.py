@@ -76,7 +76,6 @@ class Answer:
 
     text: str
     model: str
-    used_chunk_ids: list[str]
 
 
 def is_retriable_error(error: Exception) -> bool:
@@ -182,7 +181,6 @@ def generate_answer(
                 f"({ref.owner}/{ref.name}) for this question."
             ),
             model=MODEL_NAME,
-            used_chunk_ids=[],
         )
 
     client = get_client()
@@ -213,7 +211,6 @@ def generate_answer(
             return Answer(
                 text=text,
                 model=model_name,
-                used_chunk_ids=[hit.chunk_id for hit in hits],
             )
 
         last_error = RuntimeError("bos cevap")

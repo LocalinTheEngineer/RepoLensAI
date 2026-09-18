@@ -80,7 +80,6 @@ def fake_answer(ref, question, hits) -> Answer:
             "icinde yapiliyor. Ayrica yokdosya.py:1-2 dosyasina bakin."
         ),
         model="sahte-model",
-        used_chunk_ids=[first.chunk_id],
     )
 
 
