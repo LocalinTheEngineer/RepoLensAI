@@ -74,7 +74,16 @@ hashes every file's content, and only re-embeds what actually changed;
 a deleted file's old chunks are removed from Qdrant instead of lingering.
 If nothing changed, it says so and does no embedding work at all.
 
-Step 19 of 25. Questions have to be in English.
+Indexing doesn't block the request either. Kicking it off returns immediately
+with a job id, the work runs in the background, and the UI polls for the state
+it's in — queued, parsing, embedding, ready, failed.
+
+`backend/tests/` holds the checks: unit tests for filtering, chunking, symbol
+parsing and citation verification, and one integration test that runs the real
+pipeline end to end on a throwaway git repo — index, search, ask — with only
+the LLM call faked. `python -m unittest discover tests`.
+
+Step 21 of 25. Questions have to be in English.
 
 ## Running it
 
