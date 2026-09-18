@@ -17,6 +17,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
+    AgentStepOut,
     AskRequest,
     AskResponse,
     CitationOut,
@@ -32,6 +33,8 @@ from app.schemas import (
     EmbedRepositoryResponse,
     FileScanResponse,
     IndexJobStatus,
+    InvestigateRequest,
+    InvestigateResponse,
     ReindexResponse,
     RepositoryFile,
     SearchHitOut,
@@ -61,6 +64,7 @@ from app.services.file_scanner import (
     largest_files,
     scan_repository,
 )
+from app.services.agent import investigate
 from app.services.answerer import generate_answer
 from app.services.citations import count_unverified, verify_citations
 from app.services.hybrid_search import search as search_hybrid
@@ -527,6 +531,61 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         rerank_ms=round(rerank_ms, 1),
         generation_ms=round(generation_ms, 1),
         sources=[to_hit_out(hit) for hit in hits],
+        citations=[
+            CitationOut(
+                file_path=citation.file_path,
+                start_line=citation.start_line,
+                end_line=citation.end_line,
+                status=citation.status,
+                chunk_id=citation.chunk_id,
+            )
+            for citation in citations
+        ],
+        unverified_citations=count_unverified(citations),
+    )
+
+
+@app.post(
+    "/repositories/{owner}/{name}/investigate",
+    response_model=InvestigateResponse,
+)
+def investigate_repository(
+    owner: str, name: str, payload: InvestigateRequest
+) -> InvestigateResponse:
+    """Soruyu cok adimli arastirmayla cevaplar (Adim 25).
+
+    /ask tek arama yapar. Burada model araclari kendisi cagirir: arar, dosya
+    okur, gordugu isimleri baska dosyalara kadar takip eder. Cevabin kaynaklari
+    tek bir aramanin sonucu degil, adim adim biriken kanit havuzudur ve
+    citation dogrulamasi o havuza gore yapilir.
+    """
+    started = time.perf_counter()
+    try:
+        ref = build_reference(owner, name)
+        result = investigate(ref, payload.question)
+        citations = verify_citations(result.text, result.evidence)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+    duration_ms = (time.perf_counter() - started) * 1000
+
+    return InvestigateResponse(
+        owner=ref.owner,
+        name=ref.name,
+        question=payload.question,
+        answer=result.text,
+        model=result.model,
+        duration_ms=round(duration_ms, 1),
+        steps=[
+            AgentStepOut(
+                tool=step.tool,
+                argument=step.argument,
+                result_count=step.result_count,
+            )
+            for step in result.steps
+        ],
+        sources=[to_hit_out(hit) for hit in result.evidence],
         citations=[
             CitationOut(
                 file_path=citation.file_path,

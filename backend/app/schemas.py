@@ -318,3 +318,42 @@ class AskResponse(BaseModel):
     sources: list[SearchHitOut]
     citations: list[CitationOut]
     unverified_citations: int
+
+
+class InvestigateRequest(BaseModel):
+    """POST /repositories/{owner}/{name}/investigate istegiyle gonderilen govde."""
+
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Ingilizce soru; tek aramayla cevaplanmayacak kadar genis olabilir",
+        examples=["why would a request sometimes return 401"],
+    )
+
+
+class AgentStepOut(BaseModel):
+    """Agent'in attigi tek bir adim: hangi araci hangi girdiyle cagirdi."""
+
+    tool: str
+    argument: str
+    result_count: int
+
+
+class InvestigateResponse(BaseModel):
+    """Agent'in cevabi, izledigi yol ve dogrulanmis kaynaklari.
+
+    `sources` agent'in arastirma boyunca GORDUGU butun parcalardir; tek bir
+    aramanin sonucu degil, adim adim biriken kanit havuzudur.
+    """
+
+    owner: str
+    name: str
+    question: str
+    answer: str
+    model: str
+    duration_ms: float
+    steps: list[AgentStepOut]
+    sources: list[SearchHitOut]
+    citations: list[CitationOut]
+    unverified_citations: int

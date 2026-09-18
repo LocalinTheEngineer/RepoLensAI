@@ -154,6 +154,43 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(hits)
         self.assertIn("auth.py", [hit.file_path for hit in hits])
 
+    def test_agent_araclari_kanit_topluyor(self) -> None:
+        """Agent'in araclari - model cagrisi olmadan.
+
+        Modeli cagirmak icin canli bir Gemini gerekir; araclar ise bizim
+        kodumuz ve burada gercek repo uzerinde calisiyor.
+        """
+        from app.services.agent import Recorder, build_tools
+
+        recorder = Recorder()
+        tools = {tool.__name__: tool for tool in build_tools(self.ref, recorder)}
+
+        self.assertIn("auth.py", tools["search_code"]("how is a password checked"))
+        self.assertIn("verify_password", tools["search_symbol"]("verify_password"))
+        self.assertIn("bcrypt", tools["read_file"]("auth.py", 1, 6))
+        self.assertIn("auth.py", tools["find_references"]("verify_password"))
+
+        # Her cagri bir adim olarak kaydedilmeli, kanit havuzu birikmeli.
+        self.assertEqual(
+            [step.tool for step in recorder.steps],
+            ["search_code", "search_symbol", "read_file", "find_references"],
+        )
+        self.assertTrue(recorder.evidence)
+
+        # read_file ile okunan aralik da kanit sayilmali; yoksa model oradan
+        # gordugu bir satiri kaynak gosterince "uydurma" damgasi yerdi.
+        okunan = [hit for hit in recorder.evidence if hit.chunk_id == "auth.py:1-6"]
+        self.assertEqual(len(okunan), 1)
+
+    def test_agent_repo_disina_cikamaz(self) -> None:
+        """Yolu model uretiyor; repo kokunun disina cikmasi engellenmeli."""
+        from app.services.agent import safe_path
+        from app.services.repository import RepositoryError
+
+        for kotu in ("../../../etc/passwd", "..\\..\\windows\\win.ini"):
+            with self.assertRaises(RepositoryError, msg=kotu):
+                safe_path(self.ref, kotu)
+
     def test_ask_citation_dogrulamasi_gercek_parcalara_bakiyor(self) -> None:
         from fastapi.testclient import TestClient
 

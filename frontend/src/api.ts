@@ -222,3 +222,27 @@ export function postJson(body: unknown): RequestInit {
     body: JSON.stringify(body),
   }
 }
+
+/** Agent'in attigi tek bir adim: hangi araci hangi girdiyle cagirdi. */
+export type AgentStep = {
+  tool: string
+  argument: string
+  result_count: number
+}
+
+/**
+ * Agent'in cevabi. `sources` tek bir aramanin sonucu degil, arastirma
+ * boyunca biriken kanit havuzudur.
+ */
+export type InvestigateResult = {
+  owner: string
+  name: string
+  question: string
+  answer: string
+  model: string
+  duration_ms: number
+  steps: AgentStep[]
+  sources: SearchHit[]
+  citations: Citation[]
+  unverified_citations: number
+}

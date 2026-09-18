@@ -13,17 +13,19 @@ import {
   type Health,
   type IndexResult,
   type Repository,
+  type InvestigateResult,
   type SearchMode,
   type SearchResult,
 } from './api'
 import type { ChatTurn } from './components/ChatMessage'
 import ChatPanel from './components/ChatPanel'
 import DependencyGraphPanel from './components/DependencyGraphPanel'
+import AgentPanel from './components/AgentPanel'
 import SearchPanel from './components/SearchPanel'
 import Sidebar from './components/Sidebar'
 
 /** Ana alanda hangi sekme acik. */
-type Tab = 'chat' | 'search' | 'graph'
+type Tab = 'chat' | 'agent' | 'search' | 'graph'
 
 function App() {
   const [health, setHealth] = useState<Async<Health>>({ kind: 'loading' })
@@ -48,6 +50,9 @@ function App() {
   const [search, setSearch] = useState<Async<SearchResult>>({ kind: 'idle' })
 
   const [graph, setGraph] = useState<Async<DependencyGraph>>({ kind: 'idle' })
+
+  const [agentQuestion, setAgentQuestion] = useState('')
+  const [agent, setAgent] = useState<Async<InvestigateResult>>({ kind: 'idle' })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -180,6 +185,25 @@ function App() {
     }
   }
 
+  /** Cok adimli arastirma: agent araclari kendisi cagirir. */
+  async function handleInvestigate() {
+    if (clone.kind !== 'ok' || agentQuestion.trim() === '') return
+    const { owner, name } = clone.data
+
+    setAgent({ kind: 'loading' })
+    try {
+      setAgent({
+        kind: 'ok',
+        data: await fetchJson<InvestigateResult>(
+          `/repositories/${owner}/${name}/investigate`,
+          postJson({ question: agentQuestion }),
+        ),
+      })
+    } catch (error) {
+      setAgent({ kind: 'error', message: describeError(error) })
+    }
+  }
+
   /** Ham arama: LLM olmadan en yakin kod parcalari. */
   async function handleSearch() {
     if (clone.kind !== 'ok') return
@@ -252,6 +276,13 @@ function App() {
           </button>
           <button
             type="button"
+            className={`tab ${tab === 'agent' ? 'tab--active' : ''}`}
+            onClick={() => setTab('agent')}
+          >
+            Arastir
+          </button>
+          <button
+            type="button"
             className={`tab ${tab === 'search' ? 'tab--active' : ''}`}
             onClick={() => setTab('search')}
           >
@@ -275,6 +306,16 @@ function App() {
             ready={indexed}
             busy={asking}
           />
+        ) : tab === 'agent' ? (
+          <div className="search-tab">
+            <AgentPanel
+              state={agent}
+              question={agentQuestion}
+              onQuestionChange={setAgentQuestion}
+              onSubmit={handleInvestigate}
+              ready={indexed}
+            />
+          </div>
         ) : tab === 'search' ? (
           <div className="search-tab">
             <SearchPanel
