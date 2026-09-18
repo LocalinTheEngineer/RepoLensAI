@@ -201,6 +201,22 @@ class PipelineTests(unittest.TestCase):
                     f"{tool.__name__}({parametre.name}) ipucu metne donmus",
                 )
 
+    def test_servis_hatasi_http_cevabina_cevriliyor(self) -> None:
+        """Endpointler artik try/except tasimiyor; ceviriyi tek handler yapiyor.
+
+        Handler bozulursa bu istek 500 doner - yani sessizce degil, burada
+        patlar.
+        """
+        from fastapi.testclient import TestClient
+
+        from app import main
+
+        client = TestClient(main.app)
+        response = client.get("/repositories/yok/boyle-bir-repo/files")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("detail", response.json())
+
     def test_agent_repo_disina_cikamaz(self) -> None:
         """Yolu model uretiyor; repo kokunun disina cikmasi engellenmeli."""
         from app.services.agent import safe_path
