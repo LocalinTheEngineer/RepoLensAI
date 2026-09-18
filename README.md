@@ -92,7 +92,17 @@ Every push runs the checks on GitHub Actions: lint and the full test suite on
 the backend, eslint and a type-checked build on the frontend, and both Docker
 images built to prove they still build.
 
-Step 24 of 25. Questions have to be in English.
+Some questions don't fit in one search — the answer is spread over several
+files, and you only know where to look second after you've seen the first hit.
+The Investigate tab hands the model five read-only tools (search by meaning,
+search by exact name, read a line range, find references, find tests) and lets
+it work: it searches, reads around what it found, follows names into other
+files, and writes the answer once it has evidence. Every step it took is listed
+above the answer, and the citations are checked against everything it actually
+looked at — not against one search's results. No shell, no code execution, and
+`read_file` cannot escape the repository folder.
+
+Step 25 of 25. Questions have to be in English.
 
 ## How it works
 
