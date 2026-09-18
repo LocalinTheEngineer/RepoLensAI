@@ -16,6 +16,12 @@ which hands the credentials to AuthService.
 
 So you can go check whether the answer is actually true.
 
+![Investigating a question across several files](screenshots/investigate.png)
+
+*The Investigate tab, working on this repository: the model searches, follows a
+name it saw into a second lookup, and every citation underneath is checked
+against what it actually read.*
+
 ## Where it's at
 
 The core works end to end: paste a public GitHub URL, it clones the repo,
@@ -68,6 +74,8 @@ drawn with Cytoscape.js. Python imports are resolved with the standard
 `ast` module, relative TypeScript/JavaScript imports with a small regex;
 external packages (flask, react, ...) never show up, since they don't
 correspond to a file in the repo.
+
+![File-level dependency graph](screenshots/dependency-graph.png)
 
 Re-indexing after a commit doesn't start over. It pulls the latest commit,
 hashes every file's content, and only re-embeds what actually changed;
