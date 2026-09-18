@@ -114,20 +114,33 @@ function App() {
     }
   }
 
-  /** Parcalari vektore cevirip veritabanina yazar. */
+  /** Parcalari vektore cevirip veritabanina yazar.
+   *
+   * Adim 20: bu is arka planda calisir. Once /index isi baslatir, sonra
+   * "ready"/"failed" olana kadar /index/status'u periyodik olarak yoklar.
+   */
   async function handleIndex() {
     if (clone.kind !== 'ok') return
     const { owner, name } = clone.data
+    const base = `/repositories/${owner}/${name}`
 
     setIndexState({ kind: 'loading' })
     try {
-      setIndexState({
-        kind: 'ok',
-        data: await fetchJson<IndexResult>(
-          `/repositories/${owner}/${name}/index`,
-          postJson({}),
-        ),
-      })
+      let status = await fetchJson<IndexResult>(`${base}/index`, postJson({}))
+      setIndexState({ kind: 'ok', data: status })
+
+      while (status.state !== 'ready' && status.state !== 'failed') {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        status = await fetchJson<IndexResult>(`${base}/index/status`)
+        setIndexState({ kind: 'ok', data: status })
+      }
+
+      if (status.state === 'failed') {
+        setIndexState({
+          kind: 'error',
+          message: status.error ?? 'Indeksleme basarisiz oldu.',
+        })
+      }
     } catch (error) {
       setIndexState({ kind: 'error', message: describeError(error) })
     }
@@ -210,7 +223,7 @@ function App() {
     chunks.kind === 'loading'
 
   const asking = turns.some((turn) => turn.result.kind === 'loading')
-  const indexed = indexState.kind === 'ok'
+  const indexed = indexState.kind === 'ok' && indexState.data.state === 'ready'
 
   return (
     <div className="shell">

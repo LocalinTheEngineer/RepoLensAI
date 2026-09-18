@@ -133,13 +133,18 @@ class EmbedRepositoryResponse(BaseModel):
     samples: list[ChunkEmbeddingSample]
 
 
-class IndexResponse(BaseModel):
-    """POST /repositories/{owner}/{name}/index cevabi."""
+class IndexJobStatus(BaseModel):
+    """POST .../index ve GET .../index/status ortak cevabi.
+
+    Adim 20: embed+store artik arka planda calisiyor; bu model o isin o anki
+    durumunu tasir. `state` "ready" olana kadar `chunk_count`/`stored_count`/
+    sure alanlari henuz tamamlanmamis olabilir.
+    """
 
     owner: str
     name: str
-    embedding_model: str
-    dimensions: int
+    state: Literal["queued", "cloning", "parsing", "embedding", "ready", "failed"]
+    error: str | None
     chunk_count: int
     stored_count: int
     embed_duration_ms: float

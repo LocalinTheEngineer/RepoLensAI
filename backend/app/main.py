@@ -13,7 +13,7 @@ Yol haritasi:
 
 import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
@@ -31,7 +31,7 @@ from app.schemas import (
     EmbedQueryResponse,
     EmbedRepositoryResponse,
     FileScanResponse,
-    IndexResponse,
+    IndexJobStatus,
     ReindexResponse,
     RepositoryFile,
     SearchHitOut,
@@ -47,6 +47,7 @@ from app.services.embedder import (
 from app.services.ast_chunker import chunk_repository
 from app.services.dependency_graph import build_dependency_graph
 from app.services.incremental_index import reindex_repository
+from app.services.index_jobs import IndexJob, get_job, run_job, start_job
 from app.services.chunker import (
     CHUNK_OVERLAP_LINES,
     CHUNK_SIZE_LINES,
@@ -67,7 +68,7 @@ from app.services.keyword_search import search as search_keywords
 from app.services.reranker import CANDIDATE_LIMIT as RERANK_CANDIDATES
 from app.services.reranker import rerank
 from app.services.vector_store import search as search_vectors
-from app.services.vector_store import SearchHit, store_chunks, stored_count
+from app.services.vector_store import SearchHit
 from app.services.repository import (
     RepositoryError,
     build_reference,
@@ -324,40 +325,60 @@ def create_repository_embeddings(owner: str, name: str) -> EmbedRepositoryRespon
     )
 
 
-@app.post("/repositories/{owner}/{name}/index", response_model=IndexResponse)
-def index_repository(owner: str, name: str) -> IndexResponse:
-    """Repository'yi parcalara ayirir, vektore cevirir ve veritabanina yazar.
+def _job_to_response(owner: str, name: str, job: IndexJob) -> IndexJobStatus:
+    return IndexJobStatus(
+        owner=owner,
+        name=name,
+        state=job.state,
+        error=job.error,
+        chunk_count=job.chunk_count,
+        stored_count=job.stored_count,
+        embed_duration_ms=job.embed_duration_ms,
+        store_duration_ms=job.store_duration_ms,
+    )
 
-    Ayni repository tekrar indekslenirse kayitlar cogalmaz; her parca kendi
-    chunk_id'sinden uretilen sabit bir kimlige sahiptir, uzerine yazilir.
+
+@app.post("/repositories/{owner}/{name}/index", response_model=IndexJobStatus)
+def index_repository(
+    owner: str, name: str, background_tasks: BackgroundTasks
+) -> IndexJobStatus:
+    """Repository'yi indeksleme isini arka plana atar, aninda durumu dondurur.
+
+    Adim 20: parcalama+embedding+kaydetme buyuk repolarda uzun surebiliyor;
+    bu istek onu beklemek yerine bir is baslatir. Ilerlemeyi ogrenmek icin
+    GET .../index/status kullanilir. Ayni repository tekrar indekslenirse
+    kayitlar cogalmaz; her parca kendi chunk_id'sinden uretilen sabit bir
+    kimlige sahiptir, uzerine yazilir.
     """
     try:
         ref = build_reference(owner, name)
-        path = repository_path(ref)
-        result = chunk_repository(path)
-
-        embed_started = time.perf_counter()
-        vectors = embed_texts([chunk.content for chunk in result.chunks])
-        embed_ms = (time.perf_counter() - embed_started) * 1000
-
-        store_started = time.perf_counter()
-        written = store_chunks(ref, result.chunks, vectors)
-        store_ms = (time.perf_counter() - store_started) * 1000
+        repository_path(ref)  # repo indirilmemisse burada 404 firlar
     except RepositoryError as error:
         raise HTTPException(
             status_code=error.status_code, detail=error.message
         ) from error
 
-    return IndexResponse(
-        owner=ref.owner,
-        name=ref.name,
-        embedding_model=MODEL_NAME,
-        dimensions=EMBEDDING_DIMENSIONS,
-        chunk_count=written,
-        stored_count=stored_count(ref),
-        embed_duration_ms=round(embed_ms, 1),
-        store_duration_ms=round(store_ms, 1),
-    )
+    job = start_job(ref)
+    background_tasks.add_task(run_job, ref)
+    return _job_to_response(ref.owner, ref.name, job)
+
+
+@app.get("/repositories/{owner}/{name}/index/status", response_model=IndexJobStatus)
+def index_status(owner: str, name: str) -> IndexJobStatus:
+    """En son baslatilan indeksleme isinin guncel durumunu dondurur."""
+    try:
+        ref = build_reference(owner, name)
+    except RepositoryError as error:
+        raise HTTPException(
+            status_code=error.status_code, detail=error.message
+        ) from error
+
+    job = get_job(ref)
+    if job is None:
+        raise HTTPException(
+            status_code=404, detail="Bu repository icin henuz indeksleme baslatilmadi."
+        )
+    return _job_to_response(ref.owner, ref.name, job)
 
 
 @app.post("/repositories/{owner}/{name}/reindex", response_model=ReindexResponse)

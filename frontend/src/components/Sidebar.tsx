@@ -55,7 +55,16 @@ function Sidebar({
   indexState,
   onIndex,
 }: Props) {
-  const indexed = indexState.kind === 'ok'
+  const indexed = indexState.kind === 'ok' && indexState.data.state === 'ready'
+  const indexBusy =
+    indexState.kind === 'loading' ||
+    (indexState.kind === 'ok' && !indexed)
+  const stateLabels: Record<string, string> = {
+    queued: 'Kuyrukta...',
+    cloning: 'Indiriliyor...',
+    parsing: 'Parcalaniyor...',
+    embedding: 'Embedding hesaplaniyor...',
+  }
 
   return (
     <aside className="sidebar">
@@ -201,10 +210,11 @@ function Sidebar({
             type="button"
             className="repo-button repo-button--block"
             onClick={onIndex}
-            disabled={indexState.kind === 'loading'}
+            disabled={indexBusy}
           >
-            {indexState.kind === 'loading'
-              ? 'Indeksleniyor...'
+            {indexBusy
+              ? (indexState.kind === 'ok' && stateLabels[indexState.data.state]) ||
+                'Indeksleniyor...'
               : indexed
                 ? 'Yeniden indeksle'
                 : 'Indeksle'}
@@ -217,7 +227,7 @@ function Sidebar({
           {indexed && (
             <p className="note">
               {(indexState.data.embed_duration_ms / 1000).toFixed(1)} sn
-              embedding · {indexState.data.dimensions} boyut
+              embedding · {indexState.data.chunk_count} parca islendi
             </p>
           )}
         </section>

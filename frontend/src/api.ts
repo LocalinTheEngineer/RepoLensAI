@@ -67,11 +67,20 @@ export type ChunkScan = {
   symbol_counts: Record<string, number>
 }
 
+/** Adim 20: indeksleme arka planda calisir, bu durumlardan biriyle ilerler. */
+export type IndexJobState =
+  | 'queued'
+  | 'cloning'
+  | 'parsing'
+  | 'embedding'
+  | 'ready'
+  | 'failed'
+
 export type IndexResult = {
   owner: string
   name: string
-  embedding_model: string
-  dimensions: number
+  state: IndexJobState
+  error: string | null
   chunk_count: number
   stored_count: number
   embed_duration_ms: number
