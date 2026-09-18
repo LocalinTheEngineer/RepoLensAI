@@ -92,7 +92,50 @@ Every push runs the checks on GitHub Actions: lint and the full test suite on
 the backend, eslint and a type-checked build on the frontend, and both Docker
 images built to prove they still build.
 
-Step 23 of 25. Questions have to be in English.
+Step 24 of 25. Questions have to be in English.
+
+## How it works
+
+```text
+GitHub URL
+    │
+    ├─ clone (shallow)          repository.py
+    ├─ pick the files           file_scanner.py     git ls-files, extension + size filters
+    ├─ cut into chunks          ast_chunker.py      Tree-sitter: function/class boundaries
+    ├─ embed                    embedder.py         all-MiniLM-L6-v2, local, 384 dims
+    └─ store                    vector_store.py     Qdrant (embedded, or a server)
+
+question
+    │
+    ├─ embed ──────┐
+    │              ├─ merge by rank (RRF)   hybrid_search.py
+    ├─ BM25 ───────┘
+    ├─ rerank 20 → 5            reranker.py         ms-marco-MiniLM-L-6-v2 cross-encoder
+    ├─ answer from those        answerer.py         Gemini, "cite or say you don't know"
+    └─ verify every citation    citations.py        against the chunks actually shown
+```
+
+Re-indexing compares file content hashes and only touches what changed;
+indexing runs as a background job the UI polls.
+
+## Numbers
+
+71 labelled questions over [pallets/flask](https://github.com/pallets/flask),
+scored at file level. Reproduce with `python eval/run_eval.py --index`.
+
+| retrieval | Recall@1 | Recall@3 | Recall@5 | MRR | ms/question |
+|---|---|---|---|---|---|
+| semantic only | 67.6% | 90.1% | 98.6% | 0.801 | 9 |
+| BM25 only | 69.0% | 91.5% | 95.8% | 0.802 | 1 |
+| hybrid (RRF) | 73.2% | 98.6% | 100% | 0.848 | 11 |
+| hybrid + rerank | 76.1% | 98.6% | 100% | 0.864 | 960 |
+
+Plus 18 questions about things Flask doesn't have: 18/18 refused instead of
+inventing an answer.
+
+Measured on one laptop CPU. [DECISIONS.md](DECISIONS.md) explains the
+trade-offs behind each of these — including where the reranker makes things
+worse.
 
 ## Running it
 
