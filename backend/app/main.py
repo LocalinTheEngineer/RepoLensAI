@@ -61,6 +61,7 @@ from app.services.file_scanner import (
 )
 from app.services.agent import investigate
 from app.services.answerer import generate_answer
+from app.services import answer_cache
 from app.services.citations import count_unverified, verify_citations
 from app.services.rate_limit import check as check_rate_limit
 from app.services.hybrid_search import search as search_hybrid
@@ -401,10 +402,16 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
     Model yalnizca bu parcalara dayanarak cevap verir; kanit yoksa
     uydurmak yerine bulamadigini soyler.
     """
+    ref = build_reference(owner, name)
+
+    # Ayni soru daha once cevaplandiysa modeli tekrar calistirma. Repo
+    # yeniden indekslendiginde bu onbellek otomatik bosalir.
+    onbellekten = answer_cache.get(ref, payload.question, payload.limit)
+    if onbellekten is not None:
+        return onbellekten
+
     # Model kotasi kisitli kaynak; retrieval'e girmeden once izin al.
     check_rate_limit()
-
-    ref = build_reference(owner, name)
 
     retrieval_started = time.perf_counter()
     # Iki asamali retrieval. Adim 13: hybrid arama (anlamsal kavrami,
@@ -428,7 +435,7 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
     # karsilastir. Uydurma referanslari boylece yakalariz.
     citations = verify_citations(answer.text, hits)
 
-    return AskResponse(
+    cevap = AskResponse(
         owner=ref.owner,
         name=ref.name,
         question=payload.question,
@@ -450,6 +457,9 @@ def ask_repository(owner: str, name: str, payload: AskRequest) -> AskResponse:
         ],
         unverified_citations=count_unverified(citations),
     )
+
+    answer_cache.put(ref, payload.question, payload.limit, value=cevap)
+    return cevap
 
 
 @app.post(

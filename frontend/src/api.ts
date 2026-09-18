@@ -253,3 +253,21 @@ export type InvestigateResult = {
   citations: Citation[]
   unverified_citations: number
 }
+
+/**
+ * Adim 19: yalnizca degisen dosyalari yeniden indeksleyen guncelleme.
+ * Once klonu son commit'e ceker, sonra icerik hash'lerini karsilastirir.
+ */
+export type ReindexResult = {
+  owner: string
+  name: string
+  previous_commit: string | null
+  commit: string
+  added: string[]
+  modified: string[]
+  deleted: string[]
+  unchanged_count: number
+  chunk_count: number
+  embed_duration_ms: number
+  store_duration_ms: number
+}

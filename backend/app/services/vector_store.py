@@ -225,9 +225,11 @@ def store_chunks(
 
     # Kelime tabanli indeks bu parcalardan kuruluyordu; artik eskidi.
     # Dairesel import olmasin diye burada, fonksiyon icinde import ediyoruz.
+    from app.services.answer_cache import invalidate as invalidate_answers
     from app.services.keyword_search import invalidate
 
     invalidate(ref)
+    invalidate_answers(ref)
 
     return count
 
@@ -246,9 +248,11 @@ def upsert_chunks(
     name = ensure_collection(ref)
     count = _upsert(client, name, chunks, vectors)
 
+    from app.services.answer_cache import invalidate as invalidate_answers
     from app.services.keyword_search import invalidate
 
     invalidate(ref)
+    invalidate_answers(ref)
 
     return count
 

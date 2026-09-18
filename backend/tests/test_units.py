@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.services import answer_cache  # noqa: E402
 from app.services import citations  # noqa: E402
 from app.services.ast_chunker import chunk_source  # noqa: E402
 from app.services.chunker import CHUNK_SIZE_LINES, chunk_text  # noqa: E402
@@ -315,6 +316,48 @@ class PythonImportIndexTests(unittest.TestCase):
 
         self.assertIn("os", moduller)
         self.assertIn("flask.app", moduller)
+
+
+class AnswerCacheTests(unittest.TestCase):
+    """Ayni soru iki kez sorulunca model tekrar calismasin."""
+
+    def setUp(self) -> None:
+        answer_cache.clear()
+        self.ref = parse_github_url("github.com/pallets/flask")
+        self.other = parse_github_url("github.com/django/django")
+
+    def tearDown(self) -> None:
+        answer_cache.clear()
+
+    def test_konulan_cevap_geri_okunur(self) -> None:
+        answer_cache.put(self.ref, "nasil calisir", 5, value="cevap")
+
+        self.assertEqual(answer_cache.get(self.ref, "nasil calisir", 5), "cevap")
+
+    def test_farkli_soru_ve_repo_karismaz(self) -> None:
+        answer_cache.put(self.ref, "soru", 5, value="cevap")
+
+        self.assertIsNone(answer_cache.get(self.ref, "baska soru", 5))
+        self.assertIsNone(answer_cache.get(self.ref, "soru", 3))
+        self.assertIsNone(answer_cache.get(self.other, "soru", 5))
+
+    def test_yeniden_indeksleme_yalnizca_o_repoyu_bosaltir(self) -> None:
+        answer_cache.put(self.ref, "soru", 5, value="a")
+        answer_cache.put(self.other, "soru", 5, value="b")
+
+        answer_cache.invalidate(self.ref)
+
+        self.assertIsNone(answer_cache.get(self.ref, "soru", 5))
+        self.assertEqual(answer_cache.get(self.other, "soru", 5), "b")
+
+    def test_sinirsiz_buyumez(self) -> None:
+        for i in range(answer_cache.MAX_ENTRIES + 5):
+            answer_cache.put(self.ref, f"soru-{i}", 5, value=i)
+
+        self.assertEqual(len(answer_cache._entries), answer_cache.MAX_ENTRIES)
+        # En eskiler dusmus, en yeniler durmali.
+        self.assertIsNone(answer_cache.get(self.ref, "soru-0", 5))
+        self.assertIsNotNone(answer_cache.get(self.ref, "soru-60", 5))
 
 
 class RateLimitTests(unittest.TestCase):

@@ -5,6 +5,7 @@ import type {
   FileScan,
   Health,
   IndexResult,
+  ReindexResult,
   Repository,
 } from '../api'
 import HealthBadge from './HealthBadge'
@@ -24,6 +25,9 @@ type Props = {
   chunks: Async<ChunkScan>
   indexState: Async<IndexResult>
   onIndex: () => void
+  /** Adim 19: yalnizca degisen dosyalari yeniden indeksler. */
+  reindex: Async<ReindexResult>
+  onReindex: () => void
 }
 
 /** Sayi + etiket seklinde tek bir istatistik. */
@@ -54,6 +58,8 @@ function Sidebar({
   chunks,
   indexState,
   onIndex,
+  reindex,
+  onReindex,
 }: Props) {
   const indexed = indexState.kind === 'ok' && indexState.data.state === 'ready'
   const indexBusy =
@@ -61,7 +67,6 @@ function Sidebar({
     (indexState.kind === 'ok' && !indexed)
   const stateLabels: Record<string, string> = {
     queued: 'Kuyrukta...',
-    cloning: 'Indiriliyor...',
     parsing: 'Parcalaniyor...',
     embedding: 'Embedding hesaplaniyor...',
   }
@@ -219,6 +224,36 @@ function Sidebar({
                 ? 'Yeniden indeksle'
                 : 'Indeksle'}
           </button>
+
+          {indexed && (
+            <button
+              type="button"
+              className="repo-button repo-button--block repo-button--quiet"
+              onClick={onReindex}
+              disabled={indexBusy || reindex.kind === 'loading'}
+            >
+              {reindex.kind === 'loading'
+                ? 'Degisiklikler araniyor...'
+                : 'Degisenleri guncelle'}
+            </button>
+          )}
+
+          {reindex.kind === 'ok' && (
+            <p className="note">
+              {reindex.data.added.length +
+                reindex.data.modified.length +
+                reindex.data.deleted.length ===
+              0
+                ? 'Degisiklik yok; hicbir sey yeniden islenmedi.'
+                : `${reindex.data.added.length} yeni · ` +
+                  `${reindex.data.modified.length} degisen · ` +
+                  `${reindex.data.deleted.length} silinen dosya`}
+            </p>
+          )}
+
+          {reindex.kind === 'error' && (
+            <p className="sidebar-error">{reindex.message}</p>
+          )}
 
           {indexState.kind === 'error' && (
             <p className="sidebar-error">{indexState.message}</p>

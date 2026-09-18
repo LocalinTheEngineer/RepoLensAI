@@ -14,6 +14,7 @@ import {
   type IndexResult,
   type Repository,
   type InvestigateResult,
+  type ReindexResult,
   type SearchMode,
   type SearchResult,
 } from './api'
@@ -51,6 +52,8 @@ function App() {
 
   const [graph, setGraph] = useState<Async<DependencyGraph>>({ kind: 'idle' })
 
+  const [reindex, setReindex] = useState<Async<ReindexResult>>({ kind: 'idle' })
+
   const [agentQuestion, setAgentQuestion] = useState('')
   const [agent, setAgent] = useState<Async<InvestigateResult>>({ kind: 'idle' })
 
@@ -85,6 +88,7 @@ function App() {
     setTurns([])
     setSearch({ kind: 'idle' })
     setGraph({ kind: 'idle' })
+    setReindex({ kind: 'idle' })
 
     let repository: Repository
     try {
@@ -148,6 +152,25 @@ function App() {
       }
     } catch (error) {
       setIndexState({ kind: 'error', message: describeError(error) })
+    }
+  }
+
+  /** Adim 19: klonu gunceller ve yalnizca degisen dosyalari yeniden indeksler. */
+  async function handleReindex() {
+    if (clone.kind !== 'ok') return
+    const { owner, name } = clone.data
+
+    setReindex({ kind: 'loading' })
+    try {
+      setReindex({
+        kind: 'ok',
+        data: await fetchJson<ReindexResult>(
+          `/repositories/${owner}/${name}/reindex`,
+          postJson({}),
+        ),
+      })
+    } catch (error) {
+      setReindex({ kind: 'error', message: describeError(error) })
     }
   }
 
@@ -263,6 +286,8 @@ function App() {
         chunks={chunks}
         indexState={indexState}
         onIndex={handleIndex}
+        reindex={reindex}
+        onReindex={handleReindex}
       />
 
       <main className="main">

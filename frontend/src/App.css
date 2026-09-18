@@ -215,6 +215,14 @@
   width: 100%;
 }
 
+/* Ikincil eylem: ayni yerde iki buton varken asil olani one cikarmali. */
+.repo-button--quiet {
+  margin-top: 8px;
+  color: var(--text);
+  background: transparent;
+  border-color: var(--border);
+}
+
 .repo-button:hover:not(:disabled) {
   filter: brightness(1.1);
 }
