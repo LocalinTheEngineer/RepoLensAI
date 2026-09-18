@@ -88,13 +88,28 @@ Qdrant, the API and the built frontend on the same ports the local setup uses,
 so nothing in the code has to change between the two. Qdrant switches from
 embedded to server mode by an environment variable and nothing else.
 
-Step 22 of 25. Questions have to be in English.
+Every push runs the checks on GitHub Actions: lint and the full test suite on
+the backend, eslint and a type-checked build on the frontend, and both Docker
+images built to prove they still build.
+
+Step 23 of 25. Questions have to be in English.
 
 ## Running it
 
-Backend. You need a Gemini API key first — the free tier at
+Either way you need a Gemini API key first — the free tier at
 [aistudio.google.com](https://aistudio.google.com) is enough and doesn't ask
-for a card.
+for a card. Copy `backend/.env.example` to `backend/.env` and put the key in it.
+
+With Docker, that's the only setup step:
+
+```powershell
+docker compose up --build
+```
+
+Frontend on :5173, API on :8000. The first build is slow (it installs PyTorch);
+the first question is slow too, since the models download then.
+
+Without Docker, backend first:
 
 ```powershell
 cd backend
@@ -124,4 +139,4 @@ Python + FastAPI on the backend, React + TypeScript on Vite up front.
 Tree-sitter parses the code. Embeddings and reranking both run locally with
 sentence-transformers (all-MiniLM-L6-v2 for embeddings, ms-marco-MiniLM-L-6-v2
 for reranking), vectors live in Qdrant, and Gemini writes the answers.
-Cytoscape.js draws the dependency graph. Docker is in the plan but not in yet.
+Cytoscape.js draws the dependency graph, and Docker Compose runs the lot.
